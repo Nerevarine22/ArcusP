@@ -46,6 +46,11 @@ h1 { color:var(--forest); font-family:var(--serif); font-size:clamp(36px,4.2vw,5
 .estimated-value { display:flex; flex-direction:column; justify-content:center; min-width:0; }
 .estimated-value h2 { font-size:11px; color:#c2cab4; font-weight:400; margin:0 0 10px; }
 .estimated-value>strong { font-family:var(--serif); font-size:clamp(40px,5.5vw,73px); letter-spacing:-2.5px; font-weight:400; line-height:1.08; color:var(--sand); font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.number-transition { position:relative; display:block; }
+.number-incoming { display:block; animation:number-arrive .32s cubic-bezier(.22,1,.36,1) both; }
+.number-outgoing { position:absolute; inset:0; display:block; opacity:0; pointer-events:none; animation:number-leave .22s ease-out both; }
+@keyframes number-arrive { from{opacity:0;transform:translateY(6px);filter:blur(2px)} to{opacity:1;transform:translateY(0);filter:blur(0)} }
+@keyframes number-leave { from{opacity:1;transform:translateY(0);filter:blur(0)} to{opacity:0;transform:translateY(-6px);filter:blur(2px)} }
 .estimated-value p { font-size:11px; color:#c1cbb7; margin:15px 0 0; line-height:1.5; }
 .summary-details { border-left:1px solid #4d6248; padding-left:29px; min-width:0; }
 .stat-label { display:block; font-size:9px; color:#c0cbb5; letter-spacing:.2px; margin-bottom:6px; }
@@ -207,4 +212,4 @@ td { padding:0; }
 [data-theme=dark] .site-footer { color:#9aa88a; }
 @media(max-width:1050px) { .site-header{height:auto;min-height:89px;flex-wrap:wrap;padding-top:17px;padding-bottom:17px;gap:13px}.site-header .brand{margin-right:auto;order:0}.header-actions{display:contents}.site-header .season-pill{order:1}.site-header .theme-toggle{order:2}.referral-offer{order:3;width:100%;justify-content:space-between;margin-top:2px}.referral-link{flex:1} }
 @media(max-width:540px) { .theme-toggle{width:34px;height:34px}.brand-product,.brand-divider{display:none}.referral-link{font-size:10px;padding:7px}.referral-copy{padding:7px 8px;gap:6px} }
-@media(prefers-reduced-motion:reduce) { *{transition:none!important}.settings input.input-guide{animation:none} }
+@media(prefers-reduced-motion:reduce) { *{transition:none!important}.settings input.input-guide,.number-incoming,.number-outgoing{animation:none} }

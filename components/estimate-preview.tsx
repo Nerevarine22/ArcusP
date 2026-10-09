@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { estimate } from "@/lib/estimator";
+import NumberTransition from "@/components/number-transition";
 
 const introStorageKey = "arcus-estimate-intro-seen";
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
@@ -66,13 +67,13 @@ export default function EstimatePreview({ demo, points, totalPoints, fdv, fdvLab
   return <div className={`summary-grid${demo ? " demo-preview" : ""}`}>
     <div className="estimated-value">
       <h2 id="estimate-heading">Estimated airdrop value</h2>
-      <strong aria-live={demo ? "off" : "polite"}>{demo ? `$${number.format(exampleValue)}` : money(calculation?.value)}</strong>
+      <strong aria-live={demo ? "off" : "polite"}><NumberTransition value={demo ? `$${number.format(exampleValue)}` : money(calculation?.value)} animate={demo} /></strong>
       <p>Based on {fdvLabel} FDV and {allocation}% airdrop allocation</p>
     </div>
     <div className="summary-details">
-      <div className="your-points"><span className="stat-label">{showingExample ? "Example points" : pointLabel}</span><strong>{displayPoints === null ? "—" : number.format(displayPoints)}</strong><span className="source-label">{showingExample ? "Example only · enter your nickname or points below" : sourceLabel}</span></div>
+      <div className="your-points"><span className="stat-label">{showingExample ? "Example points" : pointLabel}</span><strong><NumberTransition value={displayPoints === null ? "—" : number.format(displayPoints)} animate={demo} /></strong><span className="source-label">{showingExample ? "Example only · enter your nickname or points below" : sourceLabel}</span></div>
       <div className="mini-stats">
-        <div><span className="stat-label">Share of the points pool</span><strong>{calculation ? `${percent.format(calculation.poolShare)}%` : "—"}</strong></div>
+        <div><span className="stat-label">Share of the points pool</span><strong><NumberTransition value={calculation ? `${percent.format(calculation.poolShare)}%` : "—"} animate={demo} /></strong></div>
         <div><span className="stat-label">Value per point</span><strong>{money(unit?.valuePerPoint)}</strong></div>
         <div><span className="stat-label">Airdrop pool value</span><strong>{money(unit?.poolValue)}</strong></div>
         <div><span className="stat-label">Total points assumed</span><strong className="model-total">{validTotal ? number.format(totalPoints) : "—"} PTS</strong></div>

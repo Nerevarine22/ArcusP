@@ -45,9 +45,6 @@ h1 { color:var(--forest); font-family:var(--serif); font-size:clamp(36px,4.2vw,5
 .summary-grid { display:grid; grid-template-columns:1fr 1fr; gap:32px; padding:24px 0; }
 .estimated-value { display:flex; flex-direction:column; justify-content:center; min-width:0; }
 .estimated-value h2 { font-size:11px; color:#c2cab4; font-weight:400; margin:0 0 10px; }
-.demo-toggle { display:inline-flex; align-items:center; gap:6px; vertical-align:middle; margin-left:9px; padding:3px 6px; border:1px solid #647553; border-radius:4px; background:transparent; color:var(--sand); font-size:8px; letter-spacing:.7px; }
-.demo-toggle:hover { background:#ffffff0c; }
-.summary .demo-toggle:focus-visible { outline-color:var(--sand); }
 .estimated-value>strong { font-family:var(--serif); font-size:clamp(40px,5.5vw,73px); letter-spacing:-2.5px; font-weight:400; line-height:1.08; color:var(--sand); font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
 .estimated-value p { font-size:11px; color:#c1cbb7; margin:15px 0 0; line-height:1.5; }
 .summary-details { border-left:1px solid #4d6248; padding-left:29px; min-width:0; }
@@ -73,6 +70,9 @@ label { display:flex; align-items:center; justify-content:space-between; color:#
 label>span { color:#727d68; font-size:8px; letter-spacing:1px; }
 input:not([type=range]) { width:100%; min-width:0; background:var(--bg); border:1px solid #d9ddce; border-radius:7px; padding:12px; color:var(--forest); }
 input::placeholder { color:#8b927f; font-size:11px; }
+.settings input.input-guide { --guide-accent:#789454; animation:input-guide-pulse 1.5s ease-in-out 2; }
+@keyframes input-guide-pulse { 0%,100%{box-shadow:0 0 0 0 transparent} 45%,65%{border-color:var(--guide-accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--guide-accent) 24%,transparent)} }
+[data-theme=dark] .settings input.input-guide { --guide-accent:#d5c49a; }
 input[aria-invalid=true] { border-color:#a95338; }
 .nickname-row { display:flex; gap:6px; }
 .nickname-row input { flex:1; font-size:11px; padding:11px; }
@@ -207,4 +207,4 @@ td { padding:0; }
 [data-theme=dark] .site-footer { color:#9aa88a; }
 @media(max-width:1050px) { .site-header{height:auto;min-height:89px;flex-wrap:wrap;padding-top:17px;padding-bottom:17px;gap:13px}.site-header .brand{margin-right:auto;order:0}.header-actions{display:contents}.site-header .season-pill{order:1}.site-header .theme-toggle{order:2}.referral-offer{order:3;width:100%;justify-content:space-between;margin-top:2px}.referral-link{flex:1} }
 @media(max-width:540px) { .theme-toggle{width:34px;height:34px}.brand-product,.brand-divider{display:none}.referral-link{font-size:10px;padding:7px}.referral-copy{padding:7px 8px;gap:6px} }
-@media(prefers-reduced-motion:reduce) { *{transition:none!important} }
+@media(prefers-reduced-motion:reduce) { *{transition:none!important}.settings input.input-guide{animation:none} }

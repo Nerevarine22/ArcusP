@@ -6,6 +6,7 @@ import { ALLOCATION_PRESETS, ASSUMED_TOTAL_POINTS, FDV_PRESETS, estimate, parseP
 import ThemeToggle from "@/components/theme-toggle";
 import ReferralOffer from "@/components/referral-offer";
 import EstimatePreview from "@/components/estimate-preview";
+import { useInputGuide } from "@/hooks/use-input-guide";
 
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -24,6 +25,8 @@ export default function PointsChecker({ info, initialTheme }: { info: Leaderboar
   const [perPoint, setPerPoint] = useState(true);
   const controller = useRef<AbortController | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const pointsRef = useRef<HTMLInputElement>(null);
+  const { guideField, dismissGuide } = useInputGuide(input, pointsRef);
   useEffect(() => () => controller.current?.abort(), []);
 
   function changeName(value: string) {
@@ -104,10 +107,10 @@ export default function PointsChecker({ info, initialTheme }: { info: Leaderboar
       <div className="estimator-layout">
         <aside className="settings panel" aria-labelledby="settings-heading">
           <h2 id="settings-heading">Parameters & settings</h2><p className="muted settings-intro">Find your points and choose a scenario.</p>
-          <div className="setting-group"><form onSubmit={submit} noValidate><label htmlFor="nickname">Search by nickname</label><div className="nickname-row"><input ref={input} id="nickname" placeholder="Witty Phoenix" value={name} onChange={event => changeName(event.target.value)} maxLength={100} autoComplete="off" spellCheck={false} aria-describedby="search-status" aria-invalid={Boolean(error)} /><button className="primary-button" type="submit" disabled={loading || !info}>{loading ? "…" : "Find"}</button></div></form>
+          <div className="setting-group"><form onSubmit={submit} noValidate><label htmlFor="nickname">Search by Arcus name</label><div className="nickname-row"><input ref={input} id="nickname" className={guideField === "name" ? "input-guide" : undefined} onFocus={dismissGuide} placeholder="Witty Phoenix" value={name} onChange={event => changeName(event.target.value)} maxLength={100} autoComplete="off" spellCheck={false} aria-describedby="search-status" aria-invalid={Boolean(error)} /><button className="primary-button" type="submit" disabled={loading || !info}>{loading ? "…" : "Find"}</button></div></form>
             <div id="search-status" className={`search-status ${error ? "error" : ""}`} aria-live="polite">{!info ? "Snapshot unavailable. You can still enter points manually." : loading ? "Searching the leaderboard…" : error || (result ? `Found: ${result.entry.name} · ${result.entry.tier}` : "Search ignores letter case and extra spaces.")}</div>
           </div>
-          <div className="setting-group"><label htmlFor="points">Your points <span>{result ? "JSON" : "MANUAL"}</span></label><input id="points" className="large-input" inputMode="decimal" placeholder="Enter your points" value={pointsInput} onChange={event => editPoints(event.target.value)} aria-describedby="points-error" aria-invalid={Boolean(pointsError)} /><p id="points-error" className="error">{pointsError}</p></div>
+          <div className="setting-group"><label htmlFor="points">Your points <span>{result ? "JSON" : "MANUAL"}</span></label><input ref={pointsRef} id="points" className={`large-input${guideField === "points" ? " input-guide" : ""}`} onFocus={dismissGuide} inputMode="decimal" placeholder="Enter your points" value={pointsInput} onChange={event => editPoints(event.target.value)} aria-describedby="points-error" aria-invalid={Boolean(pointsError)} /><p id="points-error" className="error">{pointsError}</p></div>
           <div className="setting-group"><div className="control-heading"><label htmlFor="fdv">Token FDV</label><strong>{fdvLabel(fdv)}</strong></div><div className="preset-list fdv-presets">{FDV_PRESETS.map(value => <button key={value} type="button" aria-pressed={fdv === value} onClick={() => setFdv(value)}>{fdvLabel(value)}</button>)}</div><input id="fdv" type="range" min={500_000_000} max={3_000_000_000} step={100_000_000} value={fdv} onChange={event => setFdv(Number(event.target.value))} aria-valuetext={fdvLabel(fdv)} /><div className="range-captions"><span>$500M</span><span>$3B</span></div></div>
           <div className="setting-group"><div className="control-heading"><label htmlFor="allocation">Airdrop allocation</label><strong>{allocation}%</strong></div><div className="preset-list">{ALLOCATION_PRESETS.map(value => <button key={value} type="button" aria-pressed={allocation === value} onClick={() => setAllocation(value)}>{value}%</button>)}</div><input id="allocation" type="range" min={5} max={15} step={1} value={allocation} onChange={event => setAllocation(Number(event.target.value))} aria-valuetext={`${allocation}%`} /><div className="range-captions"><span>5%</span><span>15%</span></div></div>
           <div className="setting-group total-setting"><label htmlFor="total-points">Total points pool</label><input id="total-points" inputMode="decimal" value={totalInput} onChange={event => setTotalInput(event.target.value)} aria-describedby="total-help" aria-invalid={!validTotal} /><p id="total-help" className={validTotal ? "muted" : "error"}>{validTotal ? "11M is a model assumption, not the current Season 1 total." : "Enter a total points pool greater than zero."}</p><div className="total-shortcuts"><button className="text-button" type="button" onClick={() => setTotalInput(String(ASSUMED_TOTAL_POINTS))}>Use 11M assumption</button>{currentInfo?.snapshot_points != null && currentInfo.snapshot_points > 0 && <button className="text-button" type="button" onClick={() => setTotalInput(String(currentInfo.snapshot_points))}>Use snapshot total</button>}</div></div>

@@ -12,10 +12,6 @@ const percent = new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 });
 const fdvLabel = (value: number) => value >= 1e9 ? `$${number.format(value / 1e9)}B` : `$${number.format(value / 1e6)}M`;
 const money = (value: number | undefined) => value === undefined ? "—" : usd.format(value);
 
-function updatedLabel(date: string) {
-  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Kyiv" }).format(new Date(date));
-}
-
 export default function PointsChecker({ info, initialTheme }: { info: LeaderboardInfo | null; initialTheme: "light" | "dark" }) {
   const [name, setName] = useState("");
   const [result, setResult] = useState<SearchResult | null>(null);
@@ -139,6 +135,6 @@ export default function PointsChecker({ info, initialTheme }: { info: Leaderboar
         </div>
       </div>
     </main>
-    <footer className="site-footer"><span>ARCUS · COMMUNITY POINTS ESTIMATOR</span><span>Snapshot: {currentInfo ? updatedLabel(currentInfo.updated_at) : "unavailable"} · Kyiv time</span></footer>
+    <footer className="site-footer"><span>ARCUS · COMMUNITY POINTS ESTIMATOR</span><span>Snapshot: {currentInfo ? "7 October 2026, at 19:00 UTC" : "unavailable"}</span></footer>
   </div>;
 }

@@ -21,6 +21,14 @@ input:focus-visible { outline:2px solid var(--forest); outline-offset:2px; }
 .header-actions { display:flex; align-items:center; gap:13px; }
 .theme-toggle { display:grid; place-items:center; width:38px; height:38px; padding:0; color:var(--text); background:transparent; border:1px solid var(--line); border-radius:7px; flex-shrink:0; }
 .theme-toggle:hover { background:var(--sand); }
+.referral-offer { position:relative; display:flex; align-items:center; border:1px solid #d8ddca; border-radius:7px; padding:3px; background:#e9ecdf; }
+.referral-link { display:flex; align-items:center; gap:7px; padding:7px 10px; color:var(--forest); font-size:11px; min-width:0; }
+.referral-link svg { flex-shrink:0; }
+.referral-link:hover { text-decoration:underline; text-underline-offset:3px; }
+.referral-copy { display:flex; align-items:center; gap:8px; padding:7px 9px; border:1px solid #cdd5bf; border-radius:4px; background:var(--bg); color:var(--forest); font-size:10px; flex-shrink:0; }
+.referral-copy:hover { background:var(--sand); }
+.referral-code { font-weight:700; letter-spacing:.7px; user-select:all; }
+.copy-feedback { position:absolute; top:calc(100% + 7px); right:0; z-index:2; width:245px; padding:10px 12px; font-size:11px; line-height:1.5; color:#9b432d; background:var(--panel); border:1px solid var(--line); border-radius:6px; }
 .brand-divider { height:23px; width:1px; background:#d1d5c6; }
 .brand-product { font-size:9px; font-weight:500; letter-spacing:1.4px; color:#6c7666; }
 .season-pill { display:flex; align-items:center; gap:8px; background:#e9ecdf; border:1px solid #dfe4d4; border-radius:7px; padding:9px 13px; font-size:11px; font-weight:500; white-space:nowrap; }
@@ -140,6 +148,11 @@ td { padding:0; }
 [data-theme=dark] .status-dot { background:var(--sand); }
 [data-theme=dark] .theme-toggle { color:var(--sand); }
 [data-theme=dark] .theme-toggle:hover { background:#293422; }
+[data-theme=dark] .referral-offer { background:#1d2718; border-color:#36432c; }
+[data-theme=dark] .referral-link { color:var(--sand); }
+[data-theme=dark] .referral-copy { color:var(--sand); background:#293422; border-color:#465238; }
+[data-theme=dark] .referral-copy:hover { background:#39462d; }
+[data-theme=dark] .copy-feedback { color:#edac8d; }
 [data-theme=dark] button:focus-visible,[data-theme=dark] a:focus-visible,[data-theme=dark] input:focus-visible { outline-color:var(--sand); }
 [data-theme=dark] .eyebrow { color:#a6b293; }
 [data-theme=dark] h1 { color:#f5f2eb; }
@@ -188,5 +201,6 @@ td { padding:0; }
 [data-theme=dark] .model-explanation p { color:#a1ac91; }
 [data-theme=dark] .model-explanation b { color:#c9d3b9; }
 [data-theme=dark] .site-footer { color:#9aa88a; }
-@media(max-width:540px) { .header-actions{gap:9px}.theme-toggle{width:34px;height:34px}.brand-product,.brand-divider{display:none} }
+@media(max-width:1050px) { .site-header{height:auto;min-height:89px;flex-wrap:wrap;padding-top:17px;padding-bottom:17px;gap:13px}.site-header .brand{margin-right:auto;order:0}.header-actions{display:contents}.site-header .season-pill{order:1}.site-header .theme-toggle{order:2}.referral-offer{order:3;width:100%;justify-content:space-between;margin-top:2px}.referral-link{flex:1} }
+@media(max-width:540px) { .theme-toggle{width:34px;height:34px}.brand-product,.brand-divider{display:none}.referral-link{font-size:10px;padding:7px}.referral-copy{padding:7px 8px;gap:6px} }
 @media(prefers-reduced-motion:reduce) { *{transition:none!important} }

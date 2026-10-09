@@ -5,10 +5,10 @@ import type { LeaderboardInfo, SearchResult } from "@/lib/leaderboard";
 import { ALLOCATION_PRESETS, ASSUMED_TOTAL_POINTS, FDV_PRESETS, estimate, parsePoints } from "@/lib/estimator";
 import ThemeToggle from "@/components/theme-toggle";
 import ReferralOffer from "@/components/referral-offer";
+import EstimatePreview from "@/components/estimate-preview";
 
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const percent = new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 });
 const fdvLabel = (value: number) => value >= 1e9 ? `$${number.format(value / 1e9)}B` : `$${number.format(value / 1e6)}M`;
 const money = (value: number | undefined) => value === undefined ? "—" : usd.format(value);
 
@@ -82,8 +82,7 @@ export default function PointsChecker({ info, initialTheme }: { info: Leaderboar
   const validTotal = totalPoints !== null && totalPoints > 0;
   const pointsError = pointsInput.trim() && (points === null || (validTotal && points > totalPoints))
     ? "Points must be a number between 0 and the total points pool." : "";
-  const calculation = validTotal && points !== null ? estimate(fdv, allocation, totalPoints, points) : null;
-  const unit = validTotal ? estimate(fdv, allocation, totalPoints, 1) : null;
+  const showDemo = !name.trim() && !pointsInput.trim() && !result && !loading && validTotal;
   const currentInfo = result ?? info;
   const rankPercent = result ? result.entry.rank / result.total * 100 : null;
   const modelSource = Number(totalInput) === ASSUMED_TOTAL_POINTS ? "11M — reference assumption" : "Custom total points pool";
@@ -98,12 +97,7 @@ export default function PointsChecker({ info, initialTheme }: { info: Leaderboar
 
       <section className="summary panel" aria-labelledby="estimate-heading">
         <div className="summary-kicker"><span className="accent-tag">AIRDROP ALLOCATION ESTIMATE</span><span>Proportional allocation · {validTotal ? number.format(totalPoints) : "—"} total points</span></div>
-        <div className="summary-grid">
-          <div className="estimated-value"><h2 id="estimate-heading">Estimated airdrop value</h2><strong aria-live="polite">{money(calculation?.value)}</strong><p>Based on {fdvLabel(fdv)} FDV and {allocation}% airdrop allocation</p></div>
-          <div className="summary-details"><div className="your-points"><span className="stat-label">{result ? `${result.entry.name} · ${result.entry.tier}` : "Your points"}</span><strong>{points === null ? "—" : number.format(points)}</strong><span className="source-label">{result ? "From the leaderboard snapshot" : points !== null ? "Manual estimate" : "Find your nickname or enter points below"}</span></div>
-            <div className="mini-stats"><div><span className="stat-label">Share of the points pool</span><strong>{calculation ? `${percent.format(calculation.poolShare)}%` : "—"}</strong></div><div><span className="stat-label">Value per point</span><strong>{money(unit?.valuePerPoint)}</strong></div><div><span className="stat-label">Airdrop pool value</span><strong>{money(unit?.poolValue)}</strong></div><div><span className="stat-label">Total points assumed</span><strong className="model-total">{validTotal ? number.format(totalPoints) : "—"} PTS</strong></div></div>
-          </div>
-        </div>
+        <EstimatePreview demo={showDemo} points={points} totalPoints={totalPoints} fdv={fdv} fdvLabel={fdvLabel(fdv)} allocation={allocation} pointLabel={result ? `${result.entry.name} · ${result.entry.tier}` : "Your points"} sourceLabel={result ? "From the leaderboard snapshot" : points !== null ? "Manual estimate" : "Find your nickname or enter points below"} />
         <div className="summary-footer"><span>Participants: <b>{currentInfo ? number.format(currentInfo.total) : "—"}</b></span><span>Snapshot points: <b>{currentInfo?.snapshot_points != null ? number.format(currentInfo.snapshot_points) : "—"}</b></span><span>Your rank: <b>{result ? `#${number.format(result.entry.rank)}` : "—"}</b></span><span className="model-origin">{modelSource}</span></div>
       </section>
 

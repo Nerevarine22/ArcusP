@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { getTheme } from "@/lib/theme";
 
@@ -10,5 +11,5 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const theme = await getTheme();
-  return <html lang="en" data-theme={theme}><body>{children}</body></html>;
+  return <html lang="en" data-theme={theme}><body>{children}<Analytics /></body></html>;
 }

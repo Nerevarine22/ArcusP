@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getInfo, readLeaderboard } from "@/lib/leaderboard";
+import { getInfo, getPointsComparison, readLeaderboard, readPreviousLeaderboard, type PointsComparison } from "@/lib/leaderboard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,9 +19,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "This nickname is not in the leaderboard snapshot. Check the spelling and try again." }, { status: 404, headers });
     }
     const entry = snapshot.entries[snapshot.by_name[key]];
+    const visibleEntry = { ...entry, points: snapshot.points_visible ? entry.points : null };
+    let comparison: PointsComparison | null = null;
+    try {
+      const previous = await readPreviousLeaderboard();
+      if (previous.season === snapshot.season) comparison = getPointsComparison(previous, visibleEntry);
+    } catch (error) {
+      console.warn("Could not load previous leaderboard for comparison:", error);
+    }
     return NextResponse.json({
       ...getInfo(snapshot),
-      entry: { ...entry, points: snapshot.points_visible ? entry.points : null },
+      entry: visibleEntry,
+      comparison,
     }, { headers });
   } catch (error) {
     console.error("Could not read leaderboard snapshot:", error);

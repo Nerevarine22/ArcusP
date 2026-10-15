@@ -1,8 +1,9 @@
 # Arcus Points Estimator
 
 A Next.js App Router and TypeScript app. Nickname searches read the local
-`leaderboard-season-1.json` through `GET /api/points?name=Witty%20Phoenix`.
+`leaderboard-season-1-2026-10-15.json` through `GET /api/points?name=Witty%20Phoenix`.
 The full snapshot stays on the server; only the matching entry is sent to the browser.
+The previous `leaderboard-season-1.json` is retained as an archive.
 
 ## Local development
 
@@ -52,10 +53,12 @@ These are hypothetical scenarios; a token launch and airdrop are not guaranteed.
 ## Refreshing the snapshot
 
 ```powershell
-.\fetch-leaderboard.ps1
+.\fetch-leaderboard.ps1 -OutputPath .\leaderboard-season-1-2026-10-15.json
 ```
 
 The JSON is read on each request. Reload the page after updating the snapshot
 to refresh season information. The app does not automatically fetch the Arcus API.
 `updated_at` is the download completion time, not the exchange's data update time.
+The footer displays this download time in UTC. When saving a new dated snapshot,
+update the filename in `lib/leaderboard.ts` to make that file active.
 Include the JSON file when deploying to another server and use the Node.js runtime.

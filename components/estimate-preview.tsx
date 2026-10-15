@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { estimate } from "@/lib/estimator";
 import NumberTransition from "@/components/number-transition";
+import PointsHistory from "@/components/points-history";
+import type { PointsComparison } from "@/lib/leaderboard";
 
 const introStorageKey = "arcus-estimate-intro-seen";
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
@@ -19,9 +21,10 @@ type Props = {
   allocation: number;
   pointLabel: string;
   sourceLabel: string;
+  comparison: PointsComparison | null;
 };
 
-export default function EstimatePreview({ demo, points, totalPoints, fdv, fdvLabel, allocation, pointLabel, sourceLabel }: Props) {
+export default function EstimatePreview({ demo, points, totalPoints, fdv, fdvLabel, allocation, pointLabel, sourceLabel, comparison }: Props) {
   const [exampleValue, setExampleValue] = useState(0);
   const firstVisit = useRef<boolean | null>(null);
 
@@ -71,7 +74,7 @@ export default function EstimatePreview({ demo, points, totalPoints, fdv, fdvLab
       <p>Based on {fdvLabel} FDV and {allocation}% airdrop allocation</p>
     </div>
     <div className="summary-details">
-      <div className="your-points"><span className="stat-label">{showingExample ? "Example points" : pointLabel}</span><strong><NumberTransition value={displayPoints === null ? "—" : number.format(displayPoints)} animate={demo} /></strong><span className="source-label">{showingExample ? "Example only · enter your nickname or points below" : sourceLabel}</span></div>
+      <div className="your-points"><span className="stat-label">{showingExample ? "Example points" : pointLabel}</span><strong><NumberTransition value={displayPoints === null ? "—" : number.format(displayPoints)} animate={demo} /></strong>{!demo && comparison && <PointsHistory comparison={comparison} />}<span className="source-label">{showingExample ? "Example only · enter your nickname or points below" : sourceLabel}</span></div>
       <div className="mini-stats">
         <div><span className="stat-label">Share of the points pool</span><strong><NumberTransition value={calculation ? `${percent.format(calculation.poolShare)}%` : "—"} animate={demo} /></strong></div>
         <div><span className="stat-label">Value per point</span><strong>{money(unit?.valuePerPoint)}</strong></div>

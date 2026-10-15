@@ -57,6 +57,12 @@ h1 { color:var(--forest); font-family:var(--serif); font-size:clamp(36px,4.2vw,5
 .your-points { padding-bottom:13px; border-bottom:1px solid #4d6248; }
 .your-points>strong { display:block; font-family:var(--serif); font-size:36px; font-weight:400; color:var(--sand); line-height:1.15; letter-spacing:-1px; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
 .source-label { display:block; color:#a6b698; font-size:9px; margin-top:5px; }
+.points-history { display:flex; align-items:center; flex-wrap:wrap; gap:7px 10px; margin-top:8px; color:#c0cbb5; font-size:11px; line-height:1.5; font-variant-numeric:tabular-nums; }
+.points-history b { color:var(--sand); font-weight:500; }
+.points-change { border:1px solid #82967440; border-radius:4px; padding:2px 6px; font-size:10px; font-weight:500; white-space:nowrap; }
+.points-change.positive { color:#d6efbc; border-color:#9bc77950; background:#cbe8ad12; }
+.points-change.negative { color:#f0b3a0; border-color:#e3a08a50; background:#e3a08a12; }
+.points-change.neutral { color:#c0cbb5; background:#ffffff08; }
 .mini-stats { display:grid; grid-template-columns:1fr 1fr; gap:14px 25px; padding-top:14px; }
 .mini-stats strong { font-size:17px; font-weight:500; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
 .mini-stats strong.model-total { font-size:15px; }

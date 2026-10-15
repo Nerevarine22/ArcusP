@@ -50,6 +50,35 @@ These are hypothetical scenarios; a token launch and airdrop are not guaranteed.
 
 `npm test` checks all 15 reference values and calculation edge cases.
 
+## Wallet analytics test page
+
+Open `/wallet` from the navigation above the estimator. The page reads the public
+Arcus API through `POST /api/wallet`; no wallet connection, API key, or signature is
+required. Choose all subaccounts (0–9) or one subaccount and an all-time, rolling,
+or custom UTC period. `Use test wallet` fills the supplied test address; press
+`Analyze wallet` to load it.
+
+The server paginates `GET /v1/fills` with inclusive microsecond boundaries,
+deduplicates trade IDs within each subaccount, and sums executed `size × price`.
+Positive fees and rebates are separate; net fees are paid fees minus rebates.
+Amounts use integer quote quantums (nine decimal places), and `lossless-json`
+preserves int64 values from `GET /v1/account/stats`. Aggregate account statistics
+are address-level and can lag live fills; they do not use the selected scan period.
+
+A scan is capped at 25 pages / 50 seconds. An interrupted or incomplete scan is
+labelled partial and does not produce per-point ratios. An account can have more
+than one fill at the same timestamp; if the API cannot advance at a full-page
+boundary, the page reports a partial result rather than silently skipping trades.
+
+For volume or net fees per point, enter period points manually or load a name from
+the local leaderboard. The name is not inferred from the address. Choose either
+the current Season 1 total or its gain since the archived snapshot, and match the
+scan's trade period to that points period. Ratios are descriptive, not an official
+Arcus points conversion formula. `Download JSON` exports the report and fills.
+
+Sources: [account stats](https://docs.arcus.xyz/api-reference/public/get-account-stats),
+[fills](https://docs.arcus.xyz/api-reference/public/get-fills).
+
 ## Refreshing the snapshot
 
 ```powershell

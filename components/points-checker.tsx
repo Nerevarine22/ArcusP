@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { LeaderboardInfo, SearchResult } from "@/lib/leaderboard";
 import { ALLOCATION_PRESETS, ASSUMED_TOTAL_POINTS, FDV_PRESETS, estimate, parsePoints } from "@/lib/estimator";
-import ThemeToggle from "@/components/theme-toggle";
-import ReferralOffer from "@/components/referral-offer";
+import SiteHeader from "@/components/site-header";
 import EstimatePreview from "@/components/estimate-preview";
 import { useInputGuide } from "@/hooks/use-input-guide";
 
@@ -92,10 +91,7 @@ export default function PointsChecker({ info, initialTheme }: { info: Leaderboar
   const modelSource = Number(totalInput) === ASSUMED_TOTAL_POINTS ? "11M — reference assumption" : "Custom total points pool";
 
   return <div className="site-shell">
-    <header className="site-header">
-      <a href="/" className="brand" aria-label="Arcus Points Estimator — home"><img className="brand-logo brand-logo-light" src="/brand/arcus-logo.svg" alt="Arcus" width="134" height="40" /><img className="brand-logo brand-logo-dark" src="/brand/arcus-logo-cream.svg" alt="Arcus" width="134" height="40" /><span className="brand-divider" aria-hidden="true" /><span className="brand-product">POINTS ESTIMATOR</span></a>
-      <div className="header-actions"><ReferralOffer /><span className="season-pill"><span className="status-dot" />{currentInfo?.season ?? "Season 1"}</span><ThemeToggle initialTheme={initialTheme} /></div>
-    </header>
+    <SiteHeader initialTheme={initialTheme} season={currentInfo?.season ?? "Season 1"} />
     <main>
       <div className="page-intro"><div><p className="eyebrow">ARCUS COMMUNITY TOOL</p><h1>What could your Arcus<br />points be worth?</h1></div><span className="model-tag"><span className="status-dot" />Hypothetical model</span></div>
 

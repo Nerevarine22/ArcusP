@@ -3,6 +3,7 @@ import { parse } from "lossless-json";
 export type WalletFill = {
   tradeId: string; subaccount: number; market: string; side: "BUY" | "SELL"; role: "MAKER" | "TAKER";
   size: string; price: string; feeUsd: string; notionalUsd: string; createdAtMicros: number; createdAt: string;
+  sequenceNumber?: string; positionEffect?: string; marketId?: string;
 };
 export type FillSummary = {
   fillCount: number; volumeUsd: string; feesPaidUsd: string; rebatesUsd: string; netFeesUsd: string;
@@ -18,6 +19,7 @@ export type WalletReport = {
   range: { from: string | null; to: string };
   scan: { complete: boolean; pages: number; subaccounts: number[]; warnings: string[] };
   stats: WalletStats | null; summary: FillSummary; fills: WalletFill[];
+  weekly: WeeklyAnalysis;
 };
 
 // JSON int64 quote quantums must survive parsing without Number rounding.
@@ -62,7 +64,10 @@ export function normalizeFill(value: unknown, address: string, subaccount: numbe
   if (typeof fill.tradeId !== "string" || !fill.tradeId || (fill.side !== "BUY" && fill.side !== "SELL") || (fill.role !== "MAKER" && fill.role !== "TAKER")) throw new Error("Invalid fill metadata.");
   const size = String(fill.size); const price = String(fill.price);
   return { tradeId: fill.tradeId, subaccount, market: String(fill.marketDisplayName ?? fill.marketId), side: fill.side, role: fill.role,
-    size, price, feeUsd: atomsUsd(decimalAtoms(String(fill.fee))), notionalUsd: notional(size, price), createdAtMicros: timestamp, createdAt: new Date(Math.floor(timestamp / 1000)).toISOString() };
+    size, price, feeUsd: atomsUsd(decimalAtoms(String(fill.fee))), notionalUsd: notional(size, price), createdAtMicros: timestamp, createdAt: new Date(Math.floor(timestamp / 1000)).toISOString(),
+    ...(fill.sequenceNumber != null && /^\d+$/.test(String(fill.sequenceNumber)) ? { sequenceNumber: String(fill.sequenceNumber) } : {}),
+    ...(fill.marketId != null ? { marketId: String(fill.marketId) } : {}),
+    ...(typeof fill.positionEffect === "string" ? { positionEffect: fill.positionEffect } : {}) };
 }
 export function summarizeFills(fills: WalletFill[]): FillSummary {
   let volume = zero, paid = zero, rebates = zero, maker = zero, taker = zero;
@@ -111,4 +116,143 @@ export async function collectFills(fetchPage: FillPage, options: { address: stri
     to = oldest;
   }
   return { fills, pages, complete: false, reason: "Scan limit reached. Choose a shorter period or a single subaccount." };
+}
+
+export const HOLDING_BUCKETS = [
+  { id: "under1h", label: "Closed <1h" }, { id: "oneTo2h", label: "Closed 1–2h" },
+  { id: "twoTo12h", label: "Closed 2–12h" }, { id: "over12h", label: "Closed 12h+" },
+  { id: "openUnder12h", label: "Open <12h" }, { id: "openOver12h", label: "Open 12h+" },
+  { id: "unknown", label: "Unknown history" },
+] as const;
+export type HoldingBucket = typeof HOLDING_BUCKETS[number]["id"];
+export type PointsWeek = {
+  index: number; label: string; start: string; end: string; cutoff: string;
+  status: "completed" | "in_progress"; partialPeriod: boolean;
+  volumeUsd: string; feesPaidUsd: string; rebatesUsd: string; netFeesUsd: string; fillCount: number;
+  buckets: { id: HoldingBucket; label: string; volumeUsd: string; sharePercent: number }[];
+  heldAtLeast12hUsd: string; averageClosedHoldHours: number | null;
+};
+export type WeeklyAnalysis = {
+  status: "complete" | "incomplete" | "disabled";
+  method: "FIFO"; asOf: string; timezone: "America/New_York"; weeks: PointsWeek[];
+};
+const hourMs = 3_600_000;
+const weekMs = 7 * 24 * hourMs;
+const hourMicros = hourMs * 1000;
+export const SEASON_ONE_START = Date.parse("2026-10-01T00:00:00Z");
+const firstDistribution = Date.parse("2026-10-07T19:00:00Z");
+const newYorkHour = new Intl.DateTimeFormat("en-US", { hour: "2-digit", hourCycle: "h23", timeZone: "America/New_York" });
+
+// Distribution-aligned analysis windows, not an assertion of the earning cutoff.
+export function pointsDistributionAt(index: number): number {
+  if (!Number.isInteger(index) || index < 1) throw new Error("Invalid points week.");
+  const candidate = firstDistribution + (index - 1) * weekMs;
+  return candidate + (15 - Number(newYorkHour.format(new Date(candidate)))) * hourMs;
+}
+export function pointsWeekIndex(timestamp: number): number {
+  if (timestamp < SEASON_ONE_START) return 0;
+  let index = Math.max(1, Math.floor((timestamp - firstDistribution) / weekMs) + 2);
+  while (index > 1 && timestamp < pointsDistributionAt(index - 1)) index--;
+  while (timestamp >= pointsDistributionAt(index)) index++;
+  return index;
+}
+
+type WeekAccumulator = {
+  index: number; start: number; end: number; cutoff: number;
+  buckets: Record<HoldingBucket, bigint>; volume: bigint; paid: bigint; rebates: bigint;
+  fillCount: number; closedVolume: bigint; weightedHold: bigint;
+};
+type HoldingFill = { fill: WalletFill; remainingQty: bigint; remainingVolume: bigint; week: WeekAccumulator | null };
+type HoldingLot = { entry: HoldingFill; side: WalletFill["side"] };
+
+export function analyzePointsWeeks(fills: WalletFill[], options: { from: number | null; to: number; complete: boolean; enabled?: boolean }): WeeklyAnalysis {
+  const result: WeeklyAnalysis = { status: options.enabled === false ? "disabled" : options.complete ? "complete" : "incomplete", method: "FIFO", asOf: new Date(options.to).toISOString(), timezone: "America/New_York", weeks: [] };
+  if (result.status !== "complete") return result;
+  const weeks = new Map<number, WeekAccumulator>();
+  const selected = (fill: WalletFill) => (options.from === null || fill.createdAtMicros >= options.from * 1000) && fill.createdAtMicros <= options.to * 1000;
+  const earliest = fills.filter(selected).reduce((min, fill) => Math.min(min, Math.floor(fill.createdAtMicros / 1000)), options.to);
+  function getWeek(index: number): WeekAccumulator {
+    const existing = weeks.get(index); if (existing) return existing;
+    const start = index === 0 ? options.from ?? earliest : index === 1 ? SEASON_ONE_START : pointsDistributionAt(index - 1);
+    const end = index === 0 ? SEASON_ONE_START : pointsDistributionAt(index);
+    const week: WeekAccumulator = { index, start, end, cutoff: Math.min(end, options.to),
+      buckets: Object.fromEntries(HOLDING_BUCKETS.map(bucket => [bucket.id, zero])) as Record<HoldingBucket, bigint>,
+      volume: zero, paid: zero, rebates: zero, fillCount: 0, closedVolume: zero, weightedHold: zero };
+    weeks.set(index, week); return week;
+  }
+  const firstIndex = pointsWeekIndex(options.from ?? Math.min(SEASON_ONE_START, earliest));
+  const lastIndex = pointsWeekIndex(options.to);
+  // Bound calendar output independently of the number of fills.
+  if (lastIndex - firstIndex > 520) throw new Error("Weekly analysis supports up to ten years per scan.");
+  for (let index = firstIndex; index <= lastIndex; index++) getWeek(index);
+
+  const precision = new Map<string, number>();
+  const keyFor = (fill: WalletFill) => `${fill.subaccount}:${fill.marketId ?? fill.market}`;
+  const history = fills.filter(fill => fill.createdAtMicros <= options.to * 1000);
+  for (const fill of history) precision.set(keyFor(fill), Math.max(precision.get(keyFor(fill)) ?? 0, decimal(fill.size).digits));
+  history.sort((a, b) => {
+    const time = a.createdAtMicros - b.createdAtMicros; if (time) return time;
+    const left = a.sequenceNumber && b.sequenceNumber ? a.sequenceNumber : a.tradeId;
+    const right = a.sequenceNumber && b.sequenceNumber ? b.sequenceNumber : b.tradeId;
+    if (/^\d+$/.test(left) && /^\d+$/.test(right)) return BigInt(left) < BigInt(right) ? -1 : BigInt(left) > BigInt(right) ? 1 : 0;
+    return left.localeCompare(right);
+  });
+  const books = new Map<string, { lots: HoldingLot[]; head: number; uncertain: boolean; initialized: boolean }>();
+  function take(fill: HoldingFill, quantity: bigint): bigint {
+    const value = quantity === fill.remainingQty ? fill.remainingVolume : fill.remainingVolume * quantity / fill.remainingQty;
+    fill.remainingQty -= quantity; fill.remainingVolume -= value; return value;
+  }
+  function assign(fill: HoldingFill, volume: bigint, bucket: HoldingBucket, duration?: number) {
+    if (!fill.week) return;
+    fill.week.buckets[bucket] += volume;
+    if (duration !== undefined) { fill.week.closedVolume += volume; fill.week.weightedHold += volume * BigInt(duration); }
+  }
+  function closedBucket(duration: number): HoldingBucket {
+    return duration < hourMicros ? "under1h" : duration < 2 * hourMicros ? "oneTo2h" : duration < 12 * hourMicros ? "twoTo12h" : "over12h";
+  }
+  function openBucket(fill: HoldingFill): HoldingBucket {
+    const cutoff = fill.week?.cutoff ?? options.to;
+    return cutoff * 1000 - fill.fill.createdAtMicros >= 12 * hourMicros ? "openOver12h" : "openUnder12h";
+  }
+  for (const fill of history) {
+    const key = keyFor(fill); const parsed = decimal(fill.size);
+    const week = selected(fill) ? getWeek(pointsWeekIndex(Math.floor(fill.createdAtMicros / 1000))) : null;
+    const current: HoldingFill = { fill, remainingQty: parsed.coefficient * ten ** BigInt((precision.get(key) ?? 0) - parsed.digits), remainingVolume: decimalAtoms(fill.notionalUsd), week };
+    if (week) {
+      week.volume += current.remainingVolume; week.fillCount++;
+      const fee = decimalAtoms(fill.feeUsd); if (fee >= zero) week.paid += fee; else week.rebates -= fee;
+    }
+    let book = books.get(key);
+    if (!book) { book = { lots: [], head: 0, uncertain: false, initialized: false }; books.set(key, book); }
+    // First observed ADD/CLOSE/FLIP is evidence that earlier position history is missing.
+    if (!book.initialized) { book.uncertain = /^(ADD|CLOSE|FLIP)_/.test(fill.positionEffect ?? ""); book.initialized = true; }
+    else if (book.uncertain && /^OPEN_/.test(fill.positionEffect ?? "")) book.uncertain = false;
+    if (book.uncertain) { assign(current, current.remainingVolume, "unknown"); continue; }
+    while (current.remainingQty > zero && book.head < book.lots.length && book.lots[book.head].side !== fill.side) {
+      const lot = book.lots[book.head];
+      const quantity = current.remainingQty < lot.entry.remainingQty ? current.remainingQty : lot.entry.remainingQty;
+      const duration = fill.createdAtMicros - lot.entry.fill.createdAtMicros;
+      const bucket = closedBucket(duration);
+      const entryVolume = take(lot.entry, quantity); const exitVolume = take(current, quantity);
+      // A later-week close must not rewrite the opening week's state at its cutoff.
+      if (lot.entry.week && fill.createdAtMicros >= lot.entry.week.cutoff * 1000) assign(lot.entry, entryVolume, openBucket(lot.entry));
+      else assign(lot.entry, entryVolume, bucket, duration);
+      assign(current, exitVolume, bucket, duration);
+      if (lot.entry.remainingQty === zero) book.head++;
+    }
+    if (current.remainingQty > zero) book.lots.push({ entry: current, side: fill.side });
+  }
+  for (const book of books.values()) for (let index = book.head; index < book.lots.length; index++) {
+    const entry = book.lots[index].entry; assign(entry, entry.remainingVolume, openBucket(entry));
+  }
+  result.weeks = [...weeks.values()].sort((a, b) => a.index - b.index).map(week => {
+    const bucketSum = Object.values(week.buckets).reduce((sum, value) => sum + value, zero);
+    if (bucketSum !== week.volume) throw new Error("Weekly volume allocation did not reconcile.");
+    return { index: week.index, label: week.index === 0 ? "Before Season 1" : `Week ${week.index}`, start: new Date(week.start).toISOString(), end: new Date(week.end).toISOString(), cutoff: new Date(week.cutoff).toISOString(),
+      status: week.end <= options.to ? "completed" : "in_progress", partialPeriod: (options.from !== null && options.from > week.start) || options.to < week.end,
+      volumeUsd: atomsUsd(week.volume), feesPaidUsd: atomsUsd(week.paid), rebatesUsd: atomsUsd(week.rebates), netFeesUsd: atomsUsd(week.paid - week.rebates), fillCount: week.fillCount,
+      buckets: HOLDING_BUCKETS.map(bucket => ({ ...bucket, volumeUsd: atomsUsd(week.buckets[bucket.id]), sharePercent: week.volume > zero ? Number(week.buckets[bucket.id]) / Number(week.volume) * 100 : 0 })),
+      heldAtLeast12hUsd: atomsUsd(week.buckets.over12h + week.buckets.openOver12h), averageClosedHoldHours: week.closedVolume > zero ? Number(week.weightedHold) / Number(week.closedVolume) / hourMicros : null };
+  });
+  return result;
 }

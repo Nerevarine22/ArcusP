@@ -79,6 +79,37 @@ Arcus points conversion formula. `Download JSON` exports the report and fills.
 Sources: [account stats](https://docs.arcus.xyz/api-reference/public/get-account-stats),
 [fills](https://docs.arcus.xyz/api-reference/public/get-fills).
 
+### Weekly volume and holding time
+
+`Include weekly holding analysis` is enabled by default. The report groups volume
+and fees into weeks aligned with the published Wednesday 15:00 New York points
+distribution schedule, including daylight-saving changes. Week 1 starts at the
+analysis assumption of 1 October 2026, 00:00 UTC. Distribution times are not a
+confirmed activity earning cutoff. See the
+[Arcus points announcement](https://arcus.xyz/blog/introducing-arcus-points).
+
+Select a week to inspect closed trading volume held for less than 1 hour, 1–2
+hours, 2–12 hours, or at least 12 hours. Entry volume still open at that week's
+cutoff is shown separately, aged below or above 12 hours. Unknown opening history
+has its own category. A chart and comparison table show USD values and shares;
+all categories reconcile exactly to executed volume without double counting.
+
+Holding times use FIFO matching per market and subaccount, splitting partial
+closes and direction flips. Each entry and exit contributes volume in its own
+execution week. A later close does not rewrite an earlier week's open status.
+The average closed holding time is weighted by matched executed volume. Metadata
+indicating a missing opening position marks history unknown until an explicit
+new opening; otherwise the available history is assumed to start flat. These
+are reconstructed holding times, not Arcus points multipliers or open interest.
+
+With weekly analysis enabled, the server reads earlier history even for a short
+selected period to find opening fills. The selected period still filters totals,
+fees, and exported fills. The existing page/time limits apply to this
+full history read; incomplete scans suppress holding estimates. Disable weekly
+analysis for a bounded volume-only scan or choose one subaccount. JSON downloads
+include the weekly breakdown. `npm test` covers duration boundaries, partial
+closes, flips, weekly cutoffs, DST, missing history, and exact volume allocation.
+
 ## Refreshing the snapshot
 
 ```powershell

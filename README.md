@@ -18,6 +18,9 @@ The interface, validation messages, and API errors are in English.
 The Arcus nickname is remembered in browser storage and shared between the points
 estimator and wallet analytics inputs, including after a reload. Clearing either
 nickname field clears the saved name.
+The estimator also remembers manual points, FDV, airdrop allocation, total pool,
+and matrix view. A saved nickname calculation reloads its leaderboard entry from
+the active snapshot, restoring rank and weekly comparison without another search.
 
 ## Brand assets
 

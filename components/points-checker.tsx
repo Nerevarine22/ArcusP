@@ -7,40 +7,54 @@ import SiteHeader from "@/components/site-header";
 import EstimatePreview from "@/components/estimate-preview";
 import { useInputGuide } from "@/hooks/use-input-guide";
 import { useRememberedName } from "@/hooks/use-remembered-name";
+import { useRememberedEstimate } from "@/hooks/use-remembered-estimate";
 
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fdvLabel = (value: number) => value >= 1e9 ? `$${number.format(value / 1e9)}B` : `$${number.format(value / 1e6)}M`;
 const money = (value: number | undefined) => value === undefined ? "—" : usd.format(value);
 const snapshotDate = new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeStyle: "short", timeZone: "UTC" });
+const normalizeName = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
 
 export default function PointsChecker({ info, initialTheme }: { info: LeaderboardInfo | null; initialTheme: "light" | "dark" }) {
   const [name, setName] = useRememberedName();
   const [result, setResult] = useState<SearchResult | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [pointsInput, setPointsInput] = useState("");
-  const [totalInput, setTotalInput] = useState(String(ASSUMED_TOTAL_POINTS));
-  const [fdv, setFdv] = useState(FDV_PRESETS[0]);
-  const [allocation, setAllocation] = useState(10);
-  const [perPoint, setPerPoint] = useState(true);
+  const [{ pointsInput, totalInput, fdv, allocation, perPoint, linkedName }, updateEstimate, estimateReady] = useRememberedEstimate();
+  const setTotalInput = (value: string) => updateEstimate({ totalInput: value });
+  const setFdv = (value: number) => updateEstimate({ fdv: value });
+  const setAllocation = (value: number) => updateEstimate({ allocation: value });
+  const setPerPoint = (value: boolean) => updateEstimate({ perPoint: value });
+  const restoredSearch = useRef<string | null>(null);
   const controller = useRef<AbortController | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const pointsRef = useRef<HTMLInputElement>(null);
   const { guideField, dismissGuide } = useInputGuide(input, pointsRef);
   useEffect(() => () => controller.current?.abort(), []);
   useEffect(() => {
-    if (result && result.entry.name.toLowerCase() !== name.trim().replace(/\s+/g, " ").toLowerCase()) {
+    if (result && normalizeName(result.entry.name) !== normalizeName(name)) {
       setResult(null);
-      setPointsInput("");
+      updateEstimate({ pointsInput: "", linkedName: null });
     }
   }, [name, result]);
+  useEffect(() => {
+    if (!estimateReady || !linkedName) return;
+    if (normalizeName(linkedName) !== normalizeName(name)) {
+      updateEstimate({ pointsInput: "", linkedName: null });
+      return;
+    }
+    if (!info) return;
+    const key = `${info.updated_at}:${normalizeName(name)}`;
+    if (restoredSearch.current === key && !controller.current?.signal.aborted) return;
+    void search(name, true);
+  }, [estimateReady, linkedName, name, info?.updated_at]);
 
   function changeName(value: string) {
     controller.current?.abort();
     setName(value);
     setError("");
-    if (result) setPointsInput("");
+    updateEstimate({ linkedName: null, ...(result || linkedName ? { pointsInput: "" } : {}) });
     setResult(null);
     setLoading(false);
   }
@@ -50,16 +64,15 @@ export default function PointsChecker({ info, initialTheme }: { info: Leaderboar
     setLoading(false);
     setError("");
     setResult(null);
-    setPointsInput(value);
-    setPerPoint(false);
+    updateEstimate({ pointsInput: value, perPoint: false, linkedName: null });
   }
 
-  async function search(value: string) {
+  async function search(value: string, restoring = false) {
     controller.current?.abort();
     const current = new AbortController();
     controller.current = current;
     setResult(null);
-    setPointsInput("");
+    if (!restoring) updateEstimate({ pointsInput: "", linkedName: null });
     setError("");
     if (!value.trim()) {
       setError("Enter a nickname to search.");
@@ -67,6 +80,7 @@ export default function PointsChecker({ info, initialTheme }: { info: Leaderboar
       input.current?.focus();
       return;
     }
+    restoredSearch.current = `${info?.updated_at}:${normalizeName(value)}`;
     setLoading(true);
     try {
       const response = await fetch(`/api/points?name=${encodeURIComponent(value)}`, { cache: "no-store", signal: current.signal });
@@ -75,11 +89,14 @@ export default function PointsChecker({ info, initialTheme }: { info: Leaderboar
       if (!current.signal.aborted) {
         const found = data as SearchResult;
         setResult(found);
-        setPointsInput(found.entry.points === null ? "" : String(found.entry.points));
-        setPerPoint(found.entry.points === null);
+        updateEstimate({ pointsInput: found.entry.points === null ? "" : String(found.entry.points), linkedName: found.entry.name,
+          ...(!restoring ? { perPoint: found.entry.points === null } : {}) });
       }
     } catch (cause) {
-      if (!current.signal.aborted) setError(cause instanceof Error ? cause.message : "Search failed. Please try again.");
+      if (!current.signal.aborted) {
+        setError(cause instanceof Error ? cause.message : "Search failed. Please try again.");
+        updateEstimate({ pointsInput: "", linkedName: null });
+      }
     } finally {
       if (!current.signal.aborted) setLoading(false);
     }

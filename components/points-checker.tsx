@@ -6,6 +6,7 @@ import { ALLOCATION_PRESETS, ASSUMED_TOTAL_POINTS, FDV_PRESETS, estimate, parseP
 import SiteHeader from "@/components/site-header";
 import EstimatePreview from "@/components/estimate-preview";
 import { useInputGuide } from "@/hooks/use-input-guide";
+import { useRememberedName } from "@/hooks/use-remembered-name";
 
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -14,7 +15,7 @@ const money = (value: number | undefined) => value === undefined ? "—" : usd.f
 const snapshotDate = new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeStyle: "short", timeZone: "UTC" });
 
 export default function PointsChecker({ info, initialTheme }: { info: LeaderboardInfo | null; initialTheme: "light" | "dark" }) {
-  const [name, setName] = useState("");
+  const [name, setName] = useRememberedName();
   const [result, setResult] = useState<SearchResult | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,6 +29,12 @@ export default function PointsChecker({ info, initialTheme }: { info: Leaderboar
   const pointsRef = useRef<HTMLInputElement>(null);
   const { guideField, dismissGuide } = useInputGuide(input, pointsRef);
   useEffect(() => () => controller.current?.abort(), []);
+  useEffect(() => {
+    if (result && result.entry.name.toLowerCase() !== name.trim().replace(/\s+/g, " ").toLowerCase()) {
+      setResult(null);
+      setPointsInput("");
+    }
+  }, [name, result]);
 
   function changeName(value: string) {
     controller.current?.abort();

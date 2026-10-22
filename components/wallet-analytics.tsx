@@ -5,6 +5,7 @@ import SiteHeader from "@/components/site-header";
 import WeeklyHoldingAnalysis from "@/components/weekly-analysis";
 import type { WalletReport } from "@/lib/wallet-analytics";
 import type { SearchResult } from "@/lib/leaderboard";
+import { useRememberedName } from "@/hooks/use-remembered-name";
 
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fineUsd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 6 });
@@ -21,13 +22,19 @@ export default function WalletAnalytics({ initialTheme }: { initialTheme: "light
   const [from, setFrom] = useState(""); const [to, setTo] = useState("");
   const [report, setReport] = useState<WalletReport | null>(null);
   const [loading, setLoading] = useState(false); const [error, setError] = useState("");
-  const [points, setPoints] = useState(""); const [name, setName] = useState("");
+  const [points, setPoints] = useState(""); const [name, setName] = useRememberedName();
   const [pointsBasis, setPointsBasis] = useState("total");
   const [pointsLoading, setPointsLoading] = useState(false); const [pointsNote, setPointsNote] = useState("");
   const [participant, setParticipant] = useState<SearchResult | null>(null);
   const scanController = useRef<AbortController | null>(null);
   const pointsController = useRef<AbortController | null>(null);
   useEffect(() => () => { scanController.current?.abort(); pointsController.current?.abort(); }, []);
+  useEffect(() => {
+    if (participant && participant.entry.name.toLowerCase() !== name.trim().replace(/\s+/g, " ").toLowerCase()) {
+      pointsController.current?.abort();
+      setParticipant(null); setPoints(""); setPointsNote(""); setPointsLoading(false);
+    }
+  }, [name, participant]);
 
   function resetReport() { scanController.current?.abort(); setReport(null); setLoading(false); setError(""); }
   function changePeriod(value: string) {

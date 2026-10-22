@@ -1,9 +1,10 @@
 # Arcus Points Estimator
 
 A Next.js App Router and TypeScript app. Nickname searches read the local
-`leaderboard-season-1-2026-10-15.json` through `GET /api/points?name=Witty%20Phoenix`.
+`leaderboard-season-1-2026-10-22.json` through `GET /api/points?name=Witty%20Phoenix`.
 The full snapshot stays on the server; only the matching entry is sent to the browser.
-The previous `leaderboard-season-1.json` is retained as an archive.
+The previous `leaderboard-season-1-2026-10-15.json` is used for weekly comparisons.
+Both it and the original `leaderboard-season-1.json` are retained as archives.
 
 ## Local development
 
@@ -14,6 +15,9 @@ npm run dev
 
 Open http://127.0.0.1:3000. Search ignores letter case and extra spaces.
 The interface, validation messages, and API errors are in English.
+The Arcus nickname is remembered in browser storage and shared between the points
+estimator and wallet analytics inputs, including after a reload. Clearing either
+nickname field clears the saved name.
 
 ## Brand assets
 
@@ -113,12 +117,13 @@ closes, flips, weekly cutoffs, DST, missing history, and exact volume allocation
 ## Refreshing the snapshot
 
 ```powershell
-.\fetch-leaderboard.ps1 -OutputPath .\leaderboard-season-1-2026-10-15.json
+.\fetch-leaderboard.ps1 -OutputPath .\leaderboard-season-1-2026-10-22.json
 ```
 
 The JSON is read on each request. Reload the page after updating the snapshot
 to refresh season information. The app does not automatically fetch the Arcus API.
 `updated_at` is the download completion time, not the exchange's data update time.
 The footer displays this download time in UTC. When saving a new dated snapshot,
-update the filename in `lib/leaderboard.ts` to make that file active.
+update the active and previous filenames in `lib/leaderboard.ts` to use that file
+and compare it with the preceding snapshot.
 Include the JSON file when deploying to another server and use the Node.js runtime.

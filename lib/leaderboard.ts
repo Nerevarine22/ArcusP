@@ -32,12 +32,12 @@ export type PointsComparison = {
 export type SearchResult = LeaderboardInfo & { entry: Entry; comparison: PointsComparison | null };
 
 export async function readLeaderboard(): Promise<Snapshot> {
-  const contents = await readFile(path.join(process.cwd(), "leaderboard-season-1-2026-10-15.json"), "utf8");
+  const contents = await readFile(path.join(process.cwd(), "leaderboard-season-1-2026-10-22.json"), "utf8");
   return JSON.parse(contents) as Snapshot;
 }
 
 export async function readPreviousLeaderboard(): Promise<Snapshot> {
-  const contents = await readFile(path.join(process.cwd(), "leaderboard-season-1.json"), "utf8");
+  const contents = await readFile(path.join(process.cwd(), "leaderboard-season-1-2026-10-15.json"), "utf8");
   return JSON.parse(contents) as Snapshot;
 }
 

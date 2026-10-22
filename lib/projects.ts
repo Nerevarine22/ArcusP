@@ -16,7 +16,7 @@ export const projects: Project[] = [
     description: "Check your points, explore airdrop scenarios, and understand your weekly trading activity.",
     tools: ["Points estimator", "Wallet analytics"],
     href: "/arcus",
-    website: "https://app.arcus.xyz/",
+    website: "https://app.arcus.xyz/ref/ATOMS",
   },
   {
     id: "txflow",
@@ -25,6 +25,6 @@ export const projects: Project[] = [
     description: "Explore your points potential and analyze trading volume, fees, funding, and positions by wallet.",
     tools: ["Points estimator", "Wallet analytics"],
     href: "/txflow",
-    website: "https://app.txflow.com/",
+    website: "https://app.txflow.com/r/TXATOMS",
   },
 ];

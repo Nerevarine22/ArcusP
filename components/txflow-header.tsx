@@ -11,7 +11,7 @@ export default function TxflowHeader({ initialTheme, active }: { initialTheme: "
       </Link>
       <nav aria-label="TxFlow navigation" className="tf-nav">
         <Link href="/" className="tf-back">← All projects</Link>
-        <ReferralOffer href="https://app.txflow.com/r/TXATOMS" code="TXATOMS" label="Open TxFlow" className="tf-referral" />
+        <ReferralOffer href="https://app.txflow.com/r/TXATOMS" code="TXATOMS" label="Receive 5% off on all trading fees" className="tf-referral" />
         <ThemeToggle initialTheme={initialTheme} />
       </nav>
     </header>

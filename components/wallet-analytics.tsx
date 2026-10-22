@@ -101,9 +101,11 @@ export default function WalletAnalytics({ initialTheme }: { initialTheme: "light
   }
   const pointCount = Number(points.replace(",", "."));
   const validPoints = points.trim() !== "" && Number.isFinite(pointCount) && pointCount > 0;
-  const ratioVolume = report && validPoints && report.scan.complete ? Number(report.summary.volumeUsd) / pointCount : null;
-  const ratioFees = report && validPoints && report.scan.complete ? Number(report.summary.netFeesUsd) / pointCount : null;
-  const effectiveFee = report && Number(report.summary.volumeUsd) > 0 ? Number(report.summary.netFeesUsd) / Number(report.summary.volumeUsd) * 10_000 : null;
+  const summary = report?.summary;
+  const historyUnavailable = Boolean(report && !summary);
+  const ratioVolume = summary && validPoints && report?.scan.complete ? Number(summary.volumeUsd) / pointCount : null;
+  const ratioFees = summary && validPoints && report?.scan.complete ? Number(summary.netFeesUsd) / pointCount : null;
+  const effectiveFee = summary && Number(summary.volumeUsd) > 0 ? Number(summary.netFeesUsd) / Number(summary.volumeUsd) * 10_000 : null;
   const scopeLabel = scope === "all" ? "All subaccounts" : `Subaccount ${scope}`;
   const periodLabel = ({ all: "All time", "24h": "Last 24h", "7d": "Last 7 days", "30d": "Last 30 days", custom: "Custom UTC period" })[period];
   const latestPoints = participant?.weekly_points?.filter(week => week.earned_points !== null).at(-1);
@@ -131,12 +133,15 @@ export default function WalletAnalytics({ initialTheme }: { initialTheme: "light
       </section>
 
       {(report || loading) && <section className="wallet-overview summary panel" aria-labelledby="activity-heading" aria-busy={loading}>
-        <div className="summary-kicker"><span className="accent-tag">YOUR ACTIVITY AT A GLANCE</span><span>{report ? `${scopeLabel} · ${report.scan.complete ? "Complete history" : "Partial history"}` : "Scanning your activity…"}</span></div>
-        <div className="activity-summary-grid"><div><h2 id="activity-heading">Executed trading volume</h2><strong>{money(report?.summary.volumeUsd)}</strong><p>{report ? `${number.format(report.summary.fillCount)} fills · ${report.range.from ? date.format(new Date(report.range.from)) : "All time"}` : "Executed size × price"}</p></div><div><h3>Net fill fees</h3><strong>{money(report?.summary.netFeesUsd)}</strong><p>{effectiveFee === null ? "Paid fees minus rebates" : `${number.format(effectiveFee)} bps effective fee`}</p></div><div><h3>Recorded Season 1 points</h3><strong>{participant?.entry.points == null ? "—" : number.format(participant.entry.points)}<em>PTS</em></strong><p>{latestPoints ? `${latestPoints.earned_points! >= 0 ? "+" : ""}${number.format(latestPoints.earned_points!)} in Week ${latestPoints.week}` : "Load your Arcus name above"}</p></div></div>
-        <div className="summary-footer"><span>Maker <b>{money(report?.summary.makerVolumeUsd)}</b></span><span>Taker <b>{money(report?.summary.takerVolumeUsd)}</b></span>{report && <span className="model-origin">Fetched {date.format(new Date(report.fetchedAt))} UTC</span>}</div>
+        <div className="summary-kicker"><span className="accent-tag">YOUR ACTIVITY AT A GLANCE</span><span>{report ? `${scopeLabel} · ${historyUnavailable ? "Trade history unavailable" : report.scan.complete ? "Complete history" : "Partial history"}` : "Scanning your activity…"}</span></div>
+        <div className="activity-summary-grid"><div><h2 id="activity-heading">Executed trading volume</h2><strong>{money(summary?.volumeUsd)}</strong><p>{historyUnavailable ? "No fills could be verified for this period" : report && summary ? `${number.format(summary.fillCount)} ${report.scan.complete ? "fills" : "loaded fills"} · ${report.range.from ? date.format(new Date(report.range.from)) : "All time"}` : "Executed size × price"}</p></div><div><h3>Net fill fees</h3><strong>{money(summary?.netFeesUsd)}</strong><p>{effectiveFee === null ? "Paid fees minus rebates" : `${number.format(effectiveFee)} bps effective fee`}</p></div><div><h3>Recorded Season 1 points</h3><strong>{participant?.entry.points == null ? "—" : number.format(participant.entry.points)}<em>PTS</em></strong><p>{latestPoints ? `${latestPoints.earned_points! >= 0 ? "+" : ""}${number.format(latestPoints.earned_points!)} in Week ${latestPoints.week}` : "Load your Arcus name above"}</p></div></div>
+        <div className="summary-footer"><span>Maker <b>{money(summary?.makerVolumeUsd)}</b></span><span>Taker <b>{money(summary?.takerVolumeUsd)}</b></span>{report && <span className="model-origin">Fetched {date.format(new Date(report.fetchedAt))} UTC</span>}</div>
       </section>}
-      {report && !report.scan.complete && <div className="wallet-notice" role="status"><b>Partial results.</b> Totals cover successfully read fills. Weekly holding estimates and efficiency require complete history.</div>}
-      {report && report.scan.warnings.length > 0 && <div className="wallet-notice">{report.scan.warnings.map((warning, index) => <p key={index}>{warning}</p>)}</div>}
+      {report && (!report.scan.complete || report.scan.warnings.length > 0) && <div className="wallet-notice" role="status">
+        {!report.scan.complete && <><b>{historyUnavailable ? "Trade history unavailable." : "Partial results."}</b><p>{historyUnavailable ? "Volume and fees are unknown, not zero. Leaderboard points load separately and do not confirm trading activity for this wallet." : "Totals cover successfully read fills only. Weekly holding estimates and efficiency require complete history."}</p></>}
+        {report.scan.warnings.map((warning, index) => <p key={index}>{warning}</p>)}
+        {!report.scan.complete && <p>Try again using Analyze activity. If this persists, select a single subaccount in Scan settings, or disable weekly analysis and choose a shorter period. Download the report JSON below to share the scan details.</p>}
+      </div>}
 
       <WeeklyHoldingAnalysis key={report?.fetchedAt ?? "empty"} report={report} points={participant?.weekly_points ?? []} linkedName={participant?.entry.name ?? null} loading={loading} />
 

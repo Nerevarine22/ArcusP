@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { atomsUsd, collectFills, decimalAtoms, normalizeFill, normalizeStats, parseArcusJson, summarizeFills } from '../lib/wallet-analytics.ts';
+import { atomsUsd, collectFills, decimalAtoms, normalizeFill, normalizeStats, parseArcusJson, summarizeFills, summarizeScan } from '../lib/wallet-analytics.ts';
 
 const address = '0x1111111111111111111111111111111111111111';
 const timestamp = 1791970065102405;
@@ -58,6 +58,47 @@ test('does not claim completeness when pagination stalls or the page cap is hit'
 test('rejects mixed wallets, subaccounts and fills outside the chosen period', async () => {
   assert.throws(() => normalizeFill(fill('1', timestamp, { address: '0x2222222222222222222222222222222222222222' }), address, 0), /different address/);
   assert.throws(() => normalizeFill(fill('1', timestamp, { accountIndex: '1' }), address, 0), /different subaccount/);
-  await assert.rejects(() => collectFills(async () => ({ fills: [fill('1')] }), { address, subaccount: 0, from: timestamp + 1, to: timestamp + 1000, limit: 1000, maxPages: 1 }), /outside/);
+  const invalid = await collectFills(async () => ({ fills: [fill('1')] }), { address, subaccount: 0, from: timestamp + 1, to: timestamp + 1000, limit: 1000, maxPages: 1 });
+  assert.equal(invalid.complete, false);
+  assert.match(invalid.reason, /outside/);
+  assert.equal(invalid.fills.length, 0);
   assert.throws(() => normalizeStats({ address, lifetimeVolume: '0' }, address), /Missing/);
+});
+
+test('keeps validated earlier pages after an upstream failure and exposes the reason', async () => {
+  let calls = 0;
+  const scan = await collectFills(async () => {
+    if (++calls === 2) throw new Error('Arcus /v1/fills returned HTTP 503.');
+    return { fills: [fill('2', timestamp), fill('1', timestamp - 1)] };
+  }, { address, subaccount: 0, from: null, to: timestamp + 1000, limit: 2, maxPages: 10 });
+  assert.equal(scan.complete, false);
+  assert.equal(scan.failed, true);
+  assert.equal(scan.pages, 2);
+  assert.deepEqual(scan.fills.map(row => row.tradeId), ['2', '1']);
+  assert.match(scan.reason, /HTTP 503/);
+  assert.equal(summarizeScan(scan.fills, scan.complete).fillCount, 2);
+});
+
+test('distinguishes unavailable history from a successful empty wallet in API summaries', async () => {
+  const options = { address, subaccount: 0, from: null, to: timestamp + 1000, limit: 1000, maxPages: 10 };
+  const failed = await collectFills(async () => { throw new Error('Arcus rate limit reached.'); }, options);
+  assert.equal(summarizeScan(failed.fills, failed.complete), null);
+  assert.equal(failed.pages, 1);
+  assert.match(failed.reason, /rate limit/);
+  const empty = await collectFills(async () => ({ fills: [] }), options);
+  assert.equal(empty.complete, true);
+  assert.equal(summarizeScan(empty.fills, empty.complete).volumeUsd, '0');
+  // Reading earlier fills must not imply a verified zero for a later failed period.
+  assert.equal(summarizeScan([], false), null);
+});
+
+test('discards an invalid page without losing validated preceding pages', async () => {
+  let calls = 0;
+  const scan = await collectFills(async () => ++calls === 1
+    ? { fills: [fill('3', timestamp), fill('2', timestamp - 1)] }
+    : { fills: [fill('1', timestamp - 2), fill('bad', timestamp - 3, { address: '0x2222222222222222222222222222222222222222' })] },
+  { address, subaccount: 0, from: null, to: timestamp + 1000, limit: 2, maxPages: 10 });
+  assert.deepEqual(scan.fills.map(row => row.tradeId), ['3', '2']);
+  assert.equal(scan.complete, false);
+  assert.match(scan.reason, /different address/);
 });

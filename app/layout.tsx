@@ -6,9 +6,9 @@ import { getTheme } from "@/lib/theme";
 import SmoothScroll from "@/components/smooth-scroll";
 
 export const metadata: Metadata = {
-  title: "Arcus · Points Estimator",
-  description: "Find your Arcus points and compare FDV and airdrop allocation scenarios.",
-  icons: { icon: "/brand/arcus-symbol.svg" },
+  title: "Perp tools · Choose your exchange",
+  description: "Explore points checkers and trading analytics for Arcus, TxFlow, and more perpetual exchanges.",
+  icons: { icon: "/brand/perp-tools-symbol.svg" },
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

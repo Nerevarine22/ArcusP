@@ -19,7 +19,7 @@ export type WalletReport = {
   address: string; accountScope: "all" | number; fetchedAt: string;
   range: { from: string | null; to: string };
   scan: { complete: boolean; pages: number; subaccounts: number[]; warnings: string[] };
-  stats: WalletStats | null; summary: FillSummary; fills: WalletFill[];
+  stats: WalletStats | null; summary: FillSummary | null; fills: WalletFill[];
   weekly: WeeklyAnalysis;
 };
 
@@ -80,6 +80,10 @@ export function summarizeFills(fills: WalletFill[]): FillSummary {
   }
   return { fillCount: fills.length, volumeUsd: atomsUsd(volume), feesPaidUsd: atomsUsd(paid), rebatesUsd: atomsUsd(rebates), netFeesUsd: atomsUsd(paid - rebates), makerVolumeUsd: atomsUsd(maker), takerVolumeUsd: atomsUsd(taker) };
 }
+// An unsuccessful empty scan is unknown, rather than evidence of zero activity.
+export function summarizeScan(fills: WalletFill[], complete: boolean): FillSummary | null {
+  return !complete && fills.length === 0 ? null : summarizeFills(fills);
+}
 export function normalizeStats(value: unknown, address: string): WalletStats {
   const stats = record(value);
   if (String(stats.address).toLowerCase() !== address) throw new Error("Arcus returned statistics for a different address.");
@@ -102,19 +106,28 @@ export async function collectFills(fetchPage: FillPage, options: { address: stri
   const fills: WalletFill[] = []; const seen = new Set<string>();
   let to = options.to, pages = 0;
   for (; pages < options.maxPages;) {
-    const page = record(await fetchPage(to)); pages++;
-    if (!Array.isArray(page.fills) || page.fills.length > options.limit) throw new Error("Unexpected fills page.");
-    let added = 0, oldest = to;
-    for (const raw of page.fills) {
-      const fill = normalizeFill(raw, options.address, options.subaccount);
-      if (fill.createdAtMicros > to || (options.from !== null && fill.createdAtMicros < options.from)) throw new Error("Arcus returned fills outside the requested period.");
-      oldest = Math.min(oldest, fill.createdAtMicros);
-      if (!seen.has(fill.tradeId)) { seen.add(fill.tradeId); fills.push(fill); added++; }
+    try {
+      pages++;
+      const page = record(await fetchPage(to));
+      if (!Array.isArray(page.fills) || page.fills.length > options.limit) throw new Error("Unexpected fills page.");
+      // Validate the entire page before admitting any of its rows.
+      const validated = page.fills.map(raw => {
+        const fill = normalizeFill(raw, options.address, options.subaccount);
+        if (fill.createdAtMicros > to || (options.from !== null && fill.createdAtMicros < options.from)) throw new Error("Arcus returned fills outside the requested period.");
+        return fill;
+      });
+      let added = 0, oldest = to;
+      for (const fill of validated) {
+        oldest = Math.min(oldest, fill.createdAtMicros);
+        if (!seen.has(fill.tradeId)) { seen.add(fill.tradeId); fills.push(fill); added++; }
+      }
+      if (page.fills.length < options.limit) return { fills, pages, complete: true, reason: null };
+      // Bounds are inclusive: keep the boundary microsecond and deduplicate IDs.
+      if (added === 0 || oldest === to) return { fills, pages, complete: false, reason: "The fills API could not advance past a timestamp boundary." };
+      to = oldest;
+    } catch (error) {
+      return { fills, pages, complete: false, failed: true, reason: error instanceof Error ? error.message : "Could not read fills." };
     }
-    if (page.fills.length < options.limit) return { fills, pages, complete: true, reason: null };
-    // Bounds are inclusive: keep the boundary microsecond and deduplicate IDs.
-    if (added === 0 || oldest === to) return { fills, pages, complete: false, reason: "The fills API could not advance past a timestamp boundary." };
-    to = oldest;
   }
   return { fills, pages, complete: false, reason: "Scan limit reached. Choose a shorter period or a single subaccount." };
 }

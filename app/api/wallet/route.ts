@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { analyzePointsWeeks, collectFills, normalizeStats, parseArcusJson, record, summarizeFills, type WalletFill, type WalletReport, type WalletStats } from "@/lib/wallet-analytics";
+import { analyzePointsWeeks, collectFills, normalizeStats, parseArcusJson, record, summarizeScan, type WalletFill, type WalletReport, type WalletStats } from "@/lib/wallet-analytics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,7 +30,12 @@ export async function POST(request: NextRequest) {
   async function read(path: string, params: Record<string, string>) {
     const url = new URL(path, base); url.searchParams.set("address", address);
     for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
-    const response = await fetch(url, { cache: "no-store", signal, headers: { Accept: "application/json" } });
+    let response: Response;
+    try {
+      response = await fetch(url, { cache: "no-store", signal, headers: { Accept: "application/json" } });
+    } catch {
+      throw new Error(signal.aborted ? "The Arcus scan timed out or was interrupted. Try a single subaccount or a shorter period." : "Could not reach the Arcus API. Try again shortly.");
+    }
     if (!response.ok) throw new Error(response.status === 429 ? "Arcus rate limit reached. Try again shortly." : `Arcus ${path} returned HTTP ${response.status}.`);
     return parseArcusJson(await response.text());
   }
@@ -48,7 +53,7 @@ export async function POST(request: NextRequest) {
         { address, subaccount, from: historyFrom === null ? null : historyFrom * 1000, to: to * 1000, limit: 1000, maxPages: 25 - pages });
       pages += scan.pages; fills.push(...scan.fills);
       if (scan.complete) completed.push(subaccount);
-      else { complete = false; warnings.push(`Subaccount ${subaccount}: ${includeWeekly && scan.reason?.startsWith("Scan limit") ? "History limit reached. Select one subaccount, or disable weekly analysis and narrow the period." : scan.reason}`); }
+      else { complete = false; warnings.push(`Subaccount ${subaccount}: ${includeWeekly && scan.reason?.startsWith("Scan limit") ? "History limit reached. Select one subaccount, or disable weekly analysis and narrow the period." : scan.reason}`); if (scan.failed) break; }
     } catch (error) { complete = false; warnings.push(`Subaccount ${subaccount}: ${error instanceof Error ? error.message : "Could not read fills."}`); break; }
   }
   const stats: WalletStats | null = await statsPromise;
@@ -56,7 +61,7 @@ export async function POST(request: NextRequest) {
   fills.sort((a, b) => b.createdAtMicros - a.createdAtMicros);
   const selectedFills = fills.filter(fill => from === null || fill.createdAtMicros >= from * 1000);
   const report: WalletReport = { address, accountScope: scope, fetchedAt: new Date().toISOString(), range: { from: from === null ? null : new Date(from).toISOString(), to: new Date(to).toISOString() },
-    scan: { complete, pages, subaccounts: completed, warnings }, stats, summary: summarizeFills(selectedFills), fills: selectedFills,
+    scan: { complete, pages, subaccounts: completed, warnings }, stats, summary: summarizeScan(selectedFills, complete), fills: selectedFills,
     weekly: analyzePointsWeeks(fills, { from, to, complete, enabled: includeWeekly }) };
   return NextResponse.json(report, { headers });
 }

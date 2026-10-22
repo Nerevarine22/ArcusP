@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parse } from "lossless-json";
+import { featureFlags } from "@/lib/features";
 import { TXFLOW_PERIODS, analyzeTxHolding, collectTxHistory, groupTxFills, normalizeTxAccount, normalizeTxFill, normalizeTxFunding, normalizeTxOverview, summarizeTxFills, summarizeTxFunding, txRecord, txflowPeriodRange, txflowPointsStatus, type TxflowPeriod, type TxWalletReport, type TxScan, type TxFill, type TxHoldingAnalysis } from "@/lib/txflow-wallet";
 
 export const runtime = "nodejs";
@@ -8,6 +9,7 @@ export const maxDuration = 60;
 const headers = { "Cache-Control": "no-store" };
 
 export async function POST(request: NextRequest) {
+  if (!featureFlags.multiExchange) return NextResponse.json({ error: "TxFlow analytics is temporarily unavailable." }, { status: 503, headers });
   let body: Record<string, unknown>;
   try { body = txRecord(await request.json()); } catch { return NextResponse.json({ error: "Send a valid wallet request." }, { status: 400, headers }); }
   const address = typeof body.address === "string" ? body.address.trim().toLowerCase() : "";

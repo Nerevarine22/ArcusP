@@ -1,11 +1,14 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import ThemeToggle from "@/components/theme-toggle";
 import { projects } from "@/lib/projects";
 import { getTheme } from "@/lib/theme";
+import { featureFlags } from "@/lib/features";
 
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
+  if (!featureFlags.multiExchange) redirect("/arcus");
   const initialTheme = await getTheme();
   const available = projects.filter(project => project.status === "available").length;
 

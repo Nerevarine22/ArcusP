@@ -1,11 +1,22 @@
 # Perp tools
 
-A Next.js App Router and TypeScript app with a project selection page at `/`.
-Arcus and TxFlow are available. Add future projects through `lib/projects.ts`.
+A Next.js App Router and TypeScript app with Arcus tools and a temporarily disabled
+multi-exchange mode. Add future projects through `lib/projects.ts`.
+
+## Enable or disable the project chooser and TxFlow
+
+The shared switch is `featureFlags.multiExchange` in `lib/features.ts`.
+It is currently **false**: `/`, `/txflow` and `/txflow/wallet` temporarily redirect
+to `/arcus`, the `All projects` navigation is hidden, and the TxFlow wallet API
+returns HTTP 503 without querying TxFlow. Arcus points and wallet tools stay available.
+
+Set it to **true** to restore the chooser, TxFlow calculator, wallet analytics,
+API and project navigation together. Rebuild/redeploy in production after changing
+the switch. The source code, assets and saved browser settings are retained.
 
 The Arcus points estimator lives at `/arcus`, with wallet analytics at
 `/arcus/wallet`. The previous `/wallet` URL redirects to `/arcus/wallet`.
-Both Arcus tools have an `All projects` link back to the selection page.
+When multi-exchange mode is enabled, both Arcus tools have an `All projects` link.
 Existing stored names, wallet addresses and estimator settings are preserved.
 
 Arcus nickname searches read the local
@@ -21,7 +32,8 @@ npm install
 npm run dev
 ```
 
-Open http://127.0.0.1:3000 and select an exchange. Arcus search ignores letter case and extra spaces.
+Open http://127.0.0.1:3000 to use Arcus, or select an exchange when multi-exchange
+mode is enabled. Arcus search ignores letter case and extra spaces.
 The interface, validation messages, and API errors are in English.
 The Arcus nickname is remembered in browser storage and shared between the points
 estimator and wallet analytics inputs, including after a reload. Clearing either

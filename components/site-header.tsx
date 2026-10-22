@@ -10,7 +10,7 @@ export default function SiteHeader({ initialTheme, season = "Season 1", active =
     </header>
     <nav className="tool-nav" aria-label="Tools">
       <Link href="/" aria-current={active === "points" ? "page" : undefined}>Points estimator</Link>
-      <Link href="/wallet" aria-current={active === "wallet" ? "page" : undefined}>Wallet analytics <span>TEST</span></Link>
+      <Link href="/wallet" aria-current={active === "wallet" ? "page" : undefined}>Wallet analytics</Link>
     </nav>
   </>;
 }

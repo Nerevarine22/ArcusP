@@ -29,16 +29,57 @@ export type PointsComparison = {
   previous_points: null;
   change_percent: null;
 };
-export type SearchResult = LeaderboardInfo & { entry: Entry; comparison: PointsComparison | null };
+export type PointWeek = {
+  week: number;
+  distributed_at: string;
+  downloaded_at: string | null;
+  cumulative_points: number | null;
+  earned_points: number | null;
+  status: "recorded" | "missing" | "hidden" | "unavailable" | "baseline_missing" | "adjusted";
+};
+export type SearchResult = LeaderboardInfo & { entry: Entry; comparison: PointsComparison | null; weekly_points?: PointWeek[] };
+
+// Distribution dates identify the week represented by each download; download
+// timestamps alone cannot identify a reward period.
+const snapshots = [
+  { week: 1, distributed_at: "2026-10-07T19:00:00Z", file: "leaderboard-season-1.json" },
+  { week: 2, distributed_at: "2026-10-14T19:00:00Z", file: "leaderboard-season-1-2026-10-15.json" },
+  { week: 3, distributed_at: "2026-10-21T19:00:00Z", file: "leaderboard-season-1-2026-10-22.json" },
+];
 
 export async function readLeaderboard(): Promise<Snapshot> {
-  const contents = await readFile(path.join(process.cwd(), "leaderboard-season-1-2026-10-22.json"), "utf8");
+  const contents = await readFile(path.join(process.cwd(), snapshots[snapshots.length - 1].file), "utf8");
   return JSON.parse(contents) as Snapshot;
 }
 
 export async function readPreviousLeaderboard(): Promise<Snapshot> {
-  const contents = await readFile(path.join(process.cwd(), "leaderboard-season-1-2026-10-15.json"), "utf8");
+  const contents = await readFile(path.join(process.cwd(), snapshots[snapshots.length - 2].file), "utf8");
   return JSON.parse(contents) as Snapshot;
+}
+
+export function getWeeklyPoints(history: { week: number; distributed_at: string; snapshot: Snapshot | null }[], name: string): PointWeek[] {
+  const key = name.trim().replace(/\s+/g, " ").toLowerCase();
+  const result: PointWeek[] = [];
+  for (const item of [...history].sort((a, b) => a.week - b.week)) {
+    const snapshot = item.snapshot;
+    const entry = snapshot && Object.hasOwn(snapshot.by_name, key) ? snapshot.entries[snapshot.by_name[key]] : null;
+    const points = snapshot?.points_visible && entry?.points != null && Number.isFinite(entry.points) && entry.points >= 0 ? entry.points : null;
+    const previous = result.find(row => row.week === item.week - 1);
+    const baseline = item.week === 1 ? 0 : previous?.cumulative_points ?? null;
+    const earned = points !== null && baseline !== null ? (Math.round(points * 100) - Math.round(baseline * 100)) / 100 : null;
+    result.push({ week: item.week, distributed_at: item.distributed_at, downloaded_at: snapshot?.updated_at ?? null,
+      cumulative_points: points, earned_points: earned,
+      status: !snapshot ? "unavailable" : !snapshot.points_visible ? "hidden" : !entry ? "missing" : points === null ? "hidden" : baseline === null ? "baseline_missing" : earned! < 0 ? "adjusted" : "recorded" });
+  }
+  return result;
+}
+
+export async function readWeeklyPoints(name: string): Promise<PointWeek[]> {
+  const history = await Promise.all(snapshots.map(async item => {
+    try { return { ...item, snapshot: JSON.parse(await readFile(path.join(process.cwd(), item.file), "utf8")) as Snapshot }; }
+    catch { return { ...item, snapshot: null }; }
+  }));
+  return getWeeklyPoints(history, name);
 }
 
 export function getPointsComparison(previous: Snapshot, current: Entry): PointsComparison | null {

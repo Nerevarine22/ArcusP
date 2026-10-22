@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getInfo, getPointsComparison, readLeaderboard, readPreviousLeaderboard, type PointsComparison } from "@/lib/leaderboard";
+import { getInfo, getPointsComparison, readLeaderboard, readPreviousLeaderboard, readWeeklyPoints, type PointsComparison } from "@/lib/leaderboard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
       ...getInfo(snapshot),
       entry: visibleEntry,
       comparison,
+      ...(request.nextUrl.searchParams.get("history") === "1" ? { weekly_points: await readWeeklyPoints(name) } : {}),
     }, { headers });
   } catch (error) {
     console.error("Could not read leaderboard snapshot:", error);

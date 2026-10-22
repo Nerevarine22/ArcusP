@@ -41,14 +41,14 @@ export async function POST(request: NextRequest) {
   const subaccounts = scope === "all" ? Array.from({ length: 10 }, (_, i) => i) : [scope];
   let pages = 0, complete = true;
   for (const subaccount of subaccounts) {
-    if (pages >= 25 || signal.aborted) { complete = false; warnings.push("Scan stopped before all subaccounts were read. Narrow the period and try again."); break; }
+    if (pages >= 25 || signal.aborted) { complete = false; warnings.push(includeWeekly ? "History scan stopped before all subaccounts were read. Select one subaccount, or disable weekly analysis and narrow the period." : "Scan stopped before all subaccounts were read. Narrow the period and try again."); break; }
     try {
       const historyFrom = includeWeekly ? null : from;
       const scan = await collectFills(cursor => read("/v1/fills", { accountIndex: String(subaccount), limit: "1000", to: String(cursor), ...(historyFrom === null ? {} : { from: String(historyFrom * 1000) }) }),
         { address, subaccount, from: historyFrom === null ? null : historyFrom * 1000, to: to * 1000, limit: 1000, maxPages: 25 - pages });
       pages += scan.pages; fills.push(...scan.fills);
       if (scan.complete) completed.push(subaccount);
-      else { complete = false; warnings.push(`Subaccount ${subaccount}: ${scan.reason}`); }
+      else { complete = false; warnings.push(`Subaccount ${subaccount}: ${includeWeekly && scan.reason?.startsWith("Scan limit") ? "History limit reached. Select one subaccount, or disable weekly analysis and narrow the period." : scan.reason}`); }
     } catch (error) { complete = false; warnings.push(`Subaccount ${subaccount}: ${error instanceof Error ? error.message : "Could not read fills."}`); break; }
   }
   const stats: WalletStats | null = await statsPromise;

@@ -1,3 +1,4 @@
+import type { PointWeek } from "./leaderboard";
 import { parse } from "lossless-json";
 
 export type WalletFill = {
@@ -255,4 +256,47 @@ export function analyzePointsWeeks(fills: WalletFill[], options: { from: number 
       heldAtLeast12hUsd: atomsUsd(week.buckets.over12h + week.buckets.openOver12h), averageClosedHoldHours: week.closedVolume > zero ? Number(week.weightedHold) / Number(week.closedVolume) / hourMicros : null };
   });
   return result;
+}
+
+
+export function weeklyEfficiency(week: PointsWeek, points: PointWeek | undefined, allSubaccounts: boolean) {
+  const earned = points?.earned_points ?? null;
+  const comparable = allSubaccounts && !week.partialPeriod && week.status === "completed"
+    && points?.status === "recorded" && points.week === week.index
+    && Date.parse(points.distributed_at) === Date.parse(week.end) && earned !== null && earned > 0;
+  return {
+    comparable,
+    volumePerPoint: comparable ? Number(week.volumeUsd) / earned! : null,
+    feesPerPoint: comparable ? Number(week.netFeesUsd) / earned! : null,
+    pointsPer10k: comparable && Number(week.volumeUsd) > 0 ? earned! / Number(week.volumeUsd) * 10_000 : null,
+  };
+}
+
+export function percentChange(current: number, previous: number): number | null {
+  return previous > 0 && Number.isFinite(current) && Number.isFinite(previous) ? (current - previous) / previous * 100 : null;
+}
+
+export function fillsForWeek(fills: WalletFill[], week: PointsWeek) {
+  const from = Date.parse(week.start) * 1000;
+  const end = Date.parse(week.end) * 1000;
+  const cutoff = Date.parse(week.cutoff) * 1000;
+  return fills.filter(fill => fill.createdAtMicros >= from && fill.createdAtMicros < end && fill.createdAtMicros <= cutoff);
+}
+
+export function marketBreakdown(fills: WalletFill[]) {
+  const markets = new Map<string, { market: string; volume: bigint; fees: bigint; maker: bigint; fills: number }>();
+  for (const fill of fills) {
+    const key = fill.marketId ?? fill.market;
+    const item = markets.get(key) ?? { market: fill.market, volume: BigInt(0), fees: BigInt(0), maker: BigInt(0), fills: 0 };
+    const volume = decimalAtoms(fill.notionalUsd);
+    item.volume += volume; item.fees += decimalAtoms(fill.feeUsd); item.fills++;
+    if (fill.role === "MAKER") item.maker += volume;
+    markets.set(key, item);
+  }
+  const total = [...markets.values()].reduce((sum, item) => sum + item.volume, BigInt(0));
+  return [...markets.entries()].sort((a, b) => a[1].volume > b[1].volume ? -1 : a[1].volume < b[1].volume ? 1 : 0).map(([id, item]) => ({
+    id, market: item.market, volumeUsd: atomsUsd(item.volume), netFeesUsd: atomsUsd(item.fees), fillCount: item.fills,
+    sharePercent: total > BigInt(0) ? Number(item.volume) / Number(total) * 100 : 0,
+    makerPercent: item.volume > BigInt(0) ? Number(item.maker) / Number(item.volume) * 100 : 0,
+  }));
 }

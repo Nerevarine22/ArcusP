@@ -18,6 +18,8 @@ The interface, validation messages, and API errors are in English.
 The Arcus nickname is remembered in browser storage and shared between the points
 estimator and wallet analytics inputs, including after a reload. Clearing either
 nickname field clears the saved name.
+The wallet address is also remembered across navigation and reloads. Clearing
+the wallet input removes the saved address.
 The estimator also remembers manual points, FDV, airdrop allocation, total pool,
 and matrix view. A saved nickname calculation reloads its leaderboard entry from
 the active snapshot, restoring rank and weekly comparison without another search.
@@ -62,8 +64,10 @@ These are hypothetical scenarios; a token launch and airdrop are not guaranteed.
 Open `/wallet` from the navigation above the estimator. The page reads the public
 Arcus API through `POST /api/wallet`; no wallet connection, API key, or signature is
 required. Choose all subaccounts (0–9) or one subaccount and an all-time, rolling,
-or custom UTC period. `Use test wallet` fills the supplied test address; press
-`Analyze wallet` to load it.
+or custom UTC period under `Scan settings`. Enter your wallet address and
+Arcus name alongside it and press `Analyze activity`
+to load trades and points together. `Load points` also works independently.
+The API does not verify that the wallet and nickname belong to the same profile.
 
 The server paginates `GET /v1/fills` with inclusive microsecond boundaries,
 deduplicates trade IDs within each subaccount, and sums executed `size × price`.
@@ -81,7 +85,9 @@ For volume or net fees per point, enter period points manually or load a name fr
 the local leaderboard. The name is not inferred from the address. Choose either
 the current Season 1 total or its gain since the archived snapshot, and match the
 scan's trade period to that points period. Ratios are descriptive, not an official
-Arcus points conversion formula. `Download JSON` exports the report and fills.
+Arcus points conversion formula.
+Custom period ratios and account aggregates are in the secondary accordions.
+`Download report JSON` includes the source fills and loaded points profile.
 
 Sources: [account stats](https://docs.arcus.xyz/api-reference/public/get-account-stats),
 [fills](https://docs.arcus.xyz/api-reference/public/get-fills).
@@ -100,6 +106,18 @@ hours, 2–12 hours, or at least 12 hours. Entry volume still open at that week'
 cutoff is shown separately, aged below or above 12 hours. Unknown opening history
 has its own category. A chart and comparison table show USD values and shares;
 all categories reconcile exactly to executed volume without double counting.
+Week cards compare recorded points with volume. The selected week shows
+fees/point, volume/point, changes from the preceding week, holding mix, maker
+share and market mix. Holdings and markets include the previous week's shares.
+On mobile, the primary comparison uses cards; the optional compact table has a
+sticky week column and its own horizontal scroll container.
+
+`GET /api/points?name=...&history=1` adds the three saved distribution records as
+`weekly_points`. Rewards are consecutive cumulative snapshot differences, not
+trade-level attribution. Missing history stays unknown, negative changes are
+adjustments, and ongoing weeks remain pending. Weekly efficiency requires
+positive recorded points, all subaccounts and a completed full analysis week.
+See [research and design decisions](docs/wallet-analytics-design.md).
 
 Holding times use FIFO matching per market and subaccount, splitting partial
 closes and direction flips. Each entry and exit contributes volume in its own
@@ -127,6 +145,8 @@ The JSON is read on each request. Reload the page after updating the snapshot
 to refresh season information. The app does not automatically fetch the Arcus API.
 `updated_at` is the download completion time, not the exchange's data update time.
 The footer displays this download time in UTC. When saving a new dated snapshot,
-update the active and previous filenames in `lib/leaderboard.ts` to use that file
-and compare it with the preceding snapshot.
+append its filename, week number and actual distribution time to the snapshot
+registry in `lib/leaderboard.ts`. The last two records become the active and
+previous snapshots; all records are available to weekly analytics. A download
+time is not a distribution time.
 Include the JSON file when deploying to another server and use the Node.js runtime.

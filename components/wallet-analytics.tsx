@@ -60,7 +60,7 @@ export default function WalletAnalytics({ initialTheme }: { initialTheme: "light
     setLoading(true); setError(""); setReport(null);
     if (name.trim()) void loadPoints();
     try {
-      const response = await fetch("/api/wallet", { method: "POST", headers: { "Content-Type": "application/json" }, signal: controller.signal,
+      const response = await fetch("/api/wallet", { method: "POST", cache: "no-store", headers: { "Content-Type": "application/json" }, signal: controller.signal,
         body: JSON.stringify({ address: address.trim(), accountScope: scope === "all" ? "all" : Number(scope), period, includeWeekly, ...(period === "custom" ? { from: `${from}:00Z`, to: `${to}:00Z` } : {}) }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not load wallet data.");

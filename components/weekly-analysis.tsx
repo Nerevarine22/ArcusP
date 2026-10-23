@@ -45,8 +45,6 @@ export default function WeeklyHoldingAnalysis({ report, points, linkedName, load
     ? percentChange(efficiency.feesPerPoint, previousEfficiency.feesPerPoint) : null;
   const selectedFills = fillsForWeek(report?.fills ?? [], selected);
   const markets = marketBreakdown(selectedFills);
-  const previousMarkets = completePair && previous ? marketBreakdown(fillsForWeek(report?.fills ?? [], previous)) : [];
-  const droppedMarkets = previousMarkets.filter(market => !markets.some(current => current.id === market.id));
   const makerVolume = selectedFills.reduce((total, fill) => total + (fill.role === "MAKER" ? Number(fill.notionalUsd) : 0), 0);
   const makerShare = Number(selected.volumeUsd) > 0 ? makerVolume / Number(selected.volumeUsd) * 100 : 0;
   const longShare = Number(selected.volumeUsd) > 0 ? Number(selected.heldAtLeast12hUsd) / Number(selected.volumeUsd) * 100 : 0;
@@ -59,7 +57,6 @@ export default function WeeklyHoldingAnalysis({ report, points, linkedName, load
       <div className="market-title"><strong>{market.market}</strong><b>{money(market.volumeUsd)}</b></div>
       <div className="market-track"><span style={{ width: `${market.sharePercent}%` }} /></div>
       <div className="market-meta"><span>{number.format(market.sharePercent)}% of volume · {market.fillCount} fills</span><span>{money(market.netFeesUsd)} fees</span></div>
-      {completePair && <p className="market-previous">{previous?.label} share: {number.format(previousMarkets.find(item => item.id === market.id)?.sharePercent ?? 0)}%</p>}
     </li>;
   }
 
@@ -91,15 +88,14 @@ export default function WeeklyHoldingAnalysis({ report, points, linkedName, load
     <div className="weekly-trade-facts"><span><b>{selected.fillCount}</b> fills</span><span><b>{number.format(makerShare)}%</b> maker volume</span><span><b>{number.format(longShare)}%</b> held 12h+, including open</span><span><b>{selected.averageClosedHoldHours === null ? "—" : `${number.format(selected.averageClosedHoldHours)}h`}</b> average closed hold</span><span><b>{money(selected.netFeesUsd)}</b> net fees</span></div>
 
     <div className="weekly-breakdowns">
-      <section className="holding-breakdown" aria-labelledby="holding-heading"><div className="breakdown-heading"><h3 id="holding-heading">How long you held</h3><span>Share of executed volume</span></div>
-        <div className="weekly-volume-bar" role="img" aria-label={`${selected.label} volume by holding time`}>{selected.buckets.filter(bucket => Number(bucket.volumeUsd) > 0).map(bucket => <span key={bucket.id} style={{ width: `${bucket.sharePercent}%`, background: colors[bucket.id] }} title={`${bucket.label}: ${money(bucket.volumeUsd)}`} />)}</div>
-        <ul className="holding-rows">{selected.buckets.map(bucket => <li key={bucket.id}><div><span className="weekly-dot" style={{ background: colors[bucket.id] }} /><span>{bucket.label}{completePair && <small className="holding-previous">{previous?.label}: {number.format(previous?.buckets.find(item => item.id === bucket.id)?.sharePercent ?? 0)}%</small>}</span></div><strong>{money(bucket.volumeUsd)}<small>{number.format(bucket.sharePercent)}%</small></strong></li>)}</ul>
-        <p className="wallet-small">FIFO reconstruction. Open entries are aged at this week's cutoff; a later close does not rewrite that earlier state.</p>
+      <section className="holding-breakdown" aria-labelledby="holding-heading"><div className="breakdown-heading"><h3 id="holding-heading">How long you held</h3><span>{selected.label} · share of executed volume</span></div>
+        <div className="weekly-volume-bar" role="img" aria-label={`${selected.label} volume by holding time`}>{selected.buckets.filter(bucket => Number(bucket.volumeUsd) > 0).map(bucket => <span key={bucket.id} style={{ width: `${bucket.sharePercent}%`, background: colors[bucket.id] }} title={`${selected.label} · ${bucket.label}: ${money(bucket.volumeUsd)}`} />)}</div>
+        <ul className="holding-rows">{selected.buckets.map(bucket => <li key={bucket.id}><div><span className="weekly-dot" style={{ background: colors[bucket.id] }} /><span>{bucket.label}</span></div><strong>{money(bucket.volumeUsd)}<small>{number.format(bucket.sharePercent)}%</small></strong></li>)}</ul>
+        <p className="wallet-small">FIFO reconstruction for {selected.label}. Open entries are aged at this week's cutoff; a later close does not rewrite that earlier state.</p>
       </section>
-      <section className="market-breakdown" aria-labelledby="market-heading"><div className="breakdown-heading"><h3 id="market-heading">What you traded</h3><span>{markets.length} {markets.length === 1 ? "market" : "markets"}</span></div>
+      <section className="market-breakdown" aria-labelledby="market-heading"><div className="breakdown-heading"><h3 id="market-heading">What you traded</h3><span>{selected.label} · {markets.length} {markets.length === 1 ? "market" : "markets"}</span></div>
         {markets.length ? <><ul className="market-rows">{markets.slice(0, 5).map(renderMarket)}</ul>{markets.length > 5 && <details className="more-markets"><summary>Show {markets.length - 5} more markets</summary><ul className="market-rows">{markets.slice(5).map(renderMarket)}</ul></details>}</> : <p className="wallet-small">No fills in this window.</p>}
-        {droppedMarkets.length > 0 && <p className="wallet-small">Not traded this week: {droppedMarkets.map(market => market.market).join(", ")}.</p>}
-        <p className="wallet-small">Executed entry and exit volume stays in the week it traded. Fees exclude funding and transfers.</p>
+        <p className="wallet-small">Showing executions in the selected {selected.label} window. Fees exclude funding and transfers.</p>
       </section>
     </div>
     <p className="analytics-attribution">These are observed comparisons, not trade-level point attribution. Points can also reflect spot activity, deposits, market making and referrals. Holding for 12 hours is an analysis category, not a published points multiplier.</p>

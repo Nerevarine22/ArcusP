@@ -191,6 +191,14 @@ labelled partial and does not produce per-point ratios. An account can have more
 than one fill at the same timestamp; if the API cannot advance at a full-page
 boundary, the page reports a partial result rather than silently skipping trades.
 
+For weekly analysis, any Season 1 window with no executions in the initial history
+is checked again using explicit inclusive microsecond bounds on each active
+subaccount. Recovered executions are merged before calculating volumes, fees,
+markets and FIFO holding times. The same page/time budget covers these checks;
+failed checks make the report incomplete rather than confirming a zero-volume week.
+The JSON report includes `scan.verifiedEmptyWeeks` and `scan.recoveredFillCount`
+for diagnosing history gaps. Each new analysis requests uncached data.
+
 For volume or net fees per point, enter period points manually or load a name from
 the local leaderboard. The name is not inferred from the address. Choose either
 the current Season 1 total or its gain since the archived snapshot, and match the
@@ -218,7 +226,8 @@ has its own category. A chart and comparison table show USD values and shares;
 all categories reconcile exactly to executed volume without double counting.
 Week cards compare recorded points with volume. The selected week shows
 fees/point, volume/point, changes from the preceding week, holding mix, maker
-share and market mix. Holdings and markets include the previous week's shares.
+share and market mix. Holding and market details show only the selected week's
+values and label that week explicitly; switching week cards lets users compare them.
 On mobile, the primary comparison uses cards; the optional compact table has a
 sticky week column and its own horizontal scroll container.
 

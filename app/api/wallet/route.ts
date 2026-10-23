@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { analyzePointsWeeks, collectFills, normalizeStats, parseArcusJson, record, summarizeScan, type WalletFill, type WalletReport, type WalletStats } from "@/lib/wallet-analytics";
+import { analyzePointsWeeks, collectFills, normalizeStats, parseArcusJson, record, summarizeScan, verifyEmptyPointsWeeks, type WalletFill, type WalletReport, type WalletStats } from "@/lib/wallet-analytics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
   const warnings: string[] = [];
   const statsPromise = read("/v1/account/stats", { include: "feeTier,volumes", windows: "24h,7d,30d" })
     .then(value => normalizeStats(value, address)).catch((error: unknown) => { warnings.push(error instanceof Error ? error.message : "Account statistics are unavailable."); return null; });
-  const fills: WalletFill[] = []; const completed: number[] = [];
+  let fills: WalletFill[] = []; const completed: number[] = [];
   const subaccounts = scope === "all" ? Array.from({ length: 10 }, (_, i) => i) : [scope];
   let pages = 0, complete = true;
   for (const subaccount of subaccounts) {
@@ -58,10 +58,20 @@ export async function POST(request: NextRequest) {
   }
   const stats: WalletStats | null = await statsPromise;
   if (!stats && !fills.length && !complete) return NextResponse.json({ error: warnings[0] ?? "Arcus data is unavailable. Try again." }, { status: 502, headers });
+  let verifiedEmptyWeeks: number[] = [], recoveredFillCount = 0;
+  if (complete && includeWeekly) {
+    const verification = await verifyEmptyPointsWeeks(fills, query => read("/v1/fills", {
+      accountIndex: String(query.subaccount), limit: "1000", from: String(query.from), to: String(query.to),
+    }), { address, subaccounts, from, to, limit: 1000, maxPages: 25 - pages, shouldStop: () => signal.aborted });
+    recoveredFillCount = verification.fills.length - fills.length;
+    fills = verification.fills; pages += verification.pages;
+    complete = verification.complete; verifiedEmptyWeeks = verification.verifiedWeeks;
+    warnings.push(...verification.warnings);
+  }
   fills.sort((a, b) => b.createdAtMicros - a.createdAtMicros);
   const selectedFills = fills.filter(fill => from === null || fill.createdAtMicros >= from * 1000);
   const report: WalletReport = { address, accountScope: scope, fetchedAt: new Date().toISOString(), range: { from: from === null ? null : new Date(from).toISOString(), to: new Date(to).toISOString() },
-    scan: { complete, pages, subaccounts: completed, warnings }, stats, summary: summarizeScan(selectedFills, complete), fills: selectedFills,
+    scan: { complete, pages, subaccounts: completed, warnings, verifiedEmptyWeeks, recoveredFillCount }, stats, summary: summarizeScan(selectedFills, complete), fills: selectedFills,
     weekly: analyzePointsWeeks(fills, { from, to, complete, enabled: includeWeekly }) };
   return NextResponse.json(report, { headers });
 }

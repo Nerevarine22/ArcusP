@@ -18,7 +18,7 @@ export type WalletStats = {
 export type WalletReport = {
   address: string; accountScope: "all" | number; fetchedAt: string;
   range: { from: string | null; to: string };
-  scan: { complete: boolean; pages: number; subaccounts: number[]; warnings: string[] };
+  scan: { complete: boolean; pages: number; subaccounts: number[]; warnings: string[]; verifiedEmptyWeeks?: number[]; recoveredFillCount?: number };
   stats: WalletStats | null; summary: FillSummary | null; fills: WalletFill[];
   weekly: WeeklyAnalysis;
 };
@@ -169,6 +169,54 @@ export function pointsWeekIndex(timestamp: number): number {
   while (index > 1 && timestamp < pointsDistributionAt(index - 1)) index--;
   while (timestamp >= pointsDistributionAt(index)) index++;
   return index;
+}
+
+// A short all-history response is not enough evidence of an empty distribution
+// window. Recheck those gaps with explicit UTC bounds before reporting zero.
+export async function verifyEmptyPointsWeeks(
+  initialFills: WalletFill[],
+  fetchPage: (query: { subaccount: number; from: number; to: number }) => Promise<unknown>,
+  options: { address: string; subaccounts: number[]; from: number | null; to: number; limit: number; maxPages: number; shouldStop?: () => boolean },
+) {
+  const result = { fills: [...initialFills], pages: 0, complete: true, warnings: [] as string[], verifiedWeeks: [] as number[] };
+  const start = Math.max(SEASON_ONE_START, options.from ?? SEASON_ONE_START);
+  if (start > options.to) return result;
+  const first = pointsWeekIndex(start), last = pointsWeekIndex(options.to);
+  if (last - first > 520) throw new Error("Weekly analysis supports up to ten years per scan.");
+  const occupied = new Set(initialFills.filter(fill => fill.createdAtMicros >= start * 1000 && fill.createdAtMicros <= options.to * 1000)
+    .map(fill => pointsWeekIndex(Math.floor(fill.createdAtMicros / 1000))));
+  const active = options.subaccounts.filter(subaccount => initialFills.some(fill => fill.subaccount === subaccount));
+  // Accounts with no executions anywhere were already checked by the main scan.
+  if (!active.length) return result;
+  const seen = new Set(initialFills.map(fill => `${fill.subaccount}:${fill.tradeId}`));
+  for (let index = first; index <= last; index++) {
+    if (occupied.has(index)) continue;
+    const weekStart = index === 1 ? SEASON_ONE_START : pointsDistributionAt(index - 1);
+    const from = Math.max(start, weekStart) * 1000;
+    // Arcus bounds are inclusive; the next Wednesday belongs to the next week.
+    const to = Math.min(options.to * 1000, pointsDistributionAt(index) * 1000 - 1);
+    for (const subaccount of active) {
+      if (result.pages >= options.maxPages || options.shouldStop?.()) {
+        result.complete = false;
+        result.warnings.push(`Week ${index} could not be verified before the scan limit. Select a shorter period or a single subaccount and retry.`);
+        return result;
+      }
+      const scan = await collectFills(cursor => fetchPage({ subaccount, from, to: cursor }),
+        { address: options.address, subaccount, from, to, limit: options.limit, maxPages: options.maxPages - result.pages });
+      result.pages += scan.pages;
+      for (const fill of scan.fills) {
+        const key = `${fill.subaccount}:${fill.tradeId}`;
+        if (!seen.has(key)) { seen.add(key); result.fills.push(fill); }
+      }
+      if (!scan.complete) {
+        result.complete = false;
+        result.warnings.push(`Week ${index}, subaccount ${subaccount}: ${scan.reason}`);
+        return result;
+      }
+    }
+    result.verifiedWeeks.push(index);
+  }
+  return result;
 }
 
 type WeekAccumulator = {

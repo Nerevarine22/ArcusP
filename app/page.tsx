@@ -4,47 +4,62 @@ import ThemeToggle from "@/components/theme-toggle";
 import { projects } from "@/lib/projects";
 import { getTheme } from "@/lib/theme";
 import { featureFlags } from "@/lib/features";
+import "./hub.css";
 
 export const dynamic = "force-dynamic";
+
+function Arrow({ diagonal = false }: { diagonal?: boolean }) {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d={diagonal ? "M6 18 18 6M6 6h12v12" : "M4 12h16m-6-6 6 6-6 6"} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+function ProjectArtwork({ id }: { id: string }) {
+  if (!["arcus", "txflow", "extended"].includes(id)) return null;
+  return <div className="hub-cover-art" aria-hidden="true">
+    {id === "arcus" ? <><svg viewBox="0 0 380 240" fill="none">{[0, 1, 2, 3, 4, 5].map(index => <path key={index} d={`M${90 + index * 27} 270V154c0-95 77-172 172-172h150`} stroke="currentColor" strokeWidth="1" />)}</svg><img src="/brand/arcus-symbol.svg" alt="" width="200" height="200" /></>
+      : id === "txflow" ? <svg viewBox="0 0 380 240" fill="none"><path d="M130 256v-83h57v-57h57V59h57V2h99" stroke="currentColor" strokeWidth="1" /><path d="M158 256v-55h57v-57h57V87h57V30h71" stroke="currentColor" strokeWidth="1" opacity=".5" /><path d="M215 144h57V87h57V30h57v171H215z" fill="currentColor" opacity=".13" /><path d="M244 59h57V2h57v114H244z" fill="currentColor" opacity=".2" /><rect x="187" y="116" width="57" height="57" fill="currentColor" opacity=".16" /><rect x="329" y="201" width="29" height="29" fill="currentColor" opacity=".5" /></svg>
+      : <><svg viewBox="0 0 380 240" fill="none"><path d="M-20 221C70 96 159 27 401 24M-20 251C70 126 159 57 401 54M-20 281C70 156 159 87 401 84M-20 311C70 186 159 117 401 114" stroke="currentColor" strokeWidth="1" /></svg><img src="/brand/extended/symbol.svg" alt="" width="200" height="200" /></>}
+  </div>;
+}
+
+function ToolIcon({ wallet }: { wallet: boolean }) {
+  return wallet ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h14v4H4V6Zm0 4v10h16V10H4Zm11 4h5v3h-5v-3Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" /></svg> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2" stroke="currentColor" strokeWidth="1.4" /><path d="M8 7h8M8 12h2m4 0h2m-8 4h2m4 0h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>;
+}
 
 export default async function Page() {
   if (!featureFlags.multiExchange) redirect("/arcus");
   const initialTheme = await getTheme();
   const available = projects.filter(project => project.status === "available").length;
 
-  return <div className="site-shell project-hub">
+  return <div className="project-hub"><div className="hub-shell">
     <header className="hub-header">
-      <Link href="/" className="hub-brand" aria-label="Perp tools — project selection">
-        <span className="hub-symbol" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 17V20M12 11V20M20 4V20" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /><path d="M3 10L10 5L15 7L21 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
-        <span>Perp tools</span>
-      </Link>
-      <div className="hub-header-actions"><span>Community analytics</span><ThemeToggle initialTheme={initialTheme} /></div>
+      <Link href="/" className="hub-brand" aria-label="Perp tools — project selection"><span className="hub-symbol" aria-hidden="true"><svg width="23" height="23" viewBox="0 0 24 24" fill="none"><path d="M4 16v4m8-10v10m8-16v16M3 10l7-5 5 2 6-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg></span>Perp tools<span className="hub-brand-dot" aria-hidden="true">.</span></Link>
+      <div className="hub-header-actions"><span className="hub-community">Independent. Community built.</span><ThemeToggle initialTheme={initialTheme} /></div>
     </header>
-
     <main>
       <section className="hub-intro" aria-labelledby="hub-heading">
-        <p className="eyebrow">POINTS · TRADING · PERSPECTIVE</p>
-        <h1 id="hub-heading">Choose your <span>exchange.</span></h1>
-        <p className="hub-description">A clearer view of your points and trading activity.<br className="hub-desktop-break" /> Pick a project to get started.</p>
+        <div><p className="hub-eyebrow"><span aria-hidden="true" />POINTS & TRADING ANALYTICS</p><h1 id="hub-heading">Your perp <span>workspace.</span></h1></div>
+        <div className="hub-exchange-count" aria-label={`${available} exchanges available`}><span>{String(available).padStart(2, "0")}</span><span>EXCHANGES<br />ONE WORKSPACE</span></div>
       </section>
-
-      <section aria-labelledby="projects-heading" className="hub-projects">
-        <div className="hub-list-heading"><h2 id="projects-heading">Explore projects</h2><span><i aria-hidden="true" />{available} live · {projects.length - available} coming soon</span></div>
-        <div className="project-grid">{projects.map((project, index) => <article key={project.id} className={`project-card panel project-${project.id}`} aria-labelledby={`project-${project.id}`}>
-          <div className="project-card-top"><span className="project-number">{String(index + 1).padStart(2, "0")} / PERPETUALS</span><span className={`project-status ${project.status}`}><i aria-hidden="true" />{project.status === "available" ? "Available" : "Coming soon"}</span></div>
-          <div className="project-identity">
-            {project.id === "arcus" ? <h3 id={`project-${project.id}`}><span className="sr-only">Arcus</span><img className="brand-logo brand-logo-light" src="/brand/arcus-logo.svg" alt="" width="162" height="49" /><img className="brand-logo brand-logo-dark" src="/brand/arcus-logo-cream.svg" alt="" width="162" height="49" /></h3> : project.id === "txflow" ? <h3 id={`project-${project.id}`}><span className="sr-only">TxFlow</span><img className="brand-logo txflow-logo" src="/brand/txflow/logo.svg" alt="" width="162" height="36" /></h3> : project.id === "extended" ? <h3 id={`project-${project.id}`}><span className="sr-only">Extended</span><img className="brand-logo brand-logo-light" src="/brand/extended/logo-dark.svg" alt="" width="162" height="37" /><img className="brand-logo brand-logo-dark" src="/brand/extended/logo.svg" alt="" width="162" height="37" /></h3> : <h3 id={`project-${project.id}`}>{project.name}</h3>}
-            <p>{project.description}</p>
-          </div>
-          <ul className="project-tools" aria-label={`${project.name} ${project.status === "available" ? "tools" : "planned tools"}`}>{project.tools.map(tool => <li key={tool}>{tool}</li>)}</ul>
-          <div className="project-card-actions">
-            {project.href && project.status === "available" ? <Link className="project-open" href={project.href}>Open {project.name}<span aria-hidden="true">↗</span></Link> : <span className="project-pending">Tools in preparation<span aria-hidden="true">—</span></span>}
-            <a className="project-external" href={project.website} target="_blank" rel="noopener noreferrer" aria-label={`Visit ${project.name} exchange (opens in a new tab)`}>Visit exchange <span aria-hidden="true">↗</span></a>
-          </div>
-        </article>)}</div>
-        <p className="hub-more"><span aria-hidden="true">＋</span> More exchanges will join the toolkit.</p>
+      <section className="hub-projects" aria-labelledby="projects-heading">
+        <div className="hub-list-heading"><h2 id="projects-heading">Choose your exchange</h2><span>YOUR NEXT PERSPECTIVE <Arrow /></span></div>
+        <div className="hub-project-grid">{projects.map((project, index) => {
+          const live = project.status === "available" && project.href;
+          const wordmark = project.id === "arcus" ? "/brand/arcus-logo-cream.svg" : project.id === "txflow" ? "/brand/txflow/logo.svg" : project.id === "extended" ? "/brand/extended/logo.svg" : null;
+          return <article className={`hub-project hub-project-${project.id}`} key={project.id} aria-labelledby={`hub-project-${project.id}`} style={{ animationDelay: `${index * 70}ms` }}>
+            <div className="hub-project-cover">
+              <ProjectArtwork id={project.id} />
+              <div className="hub-project-top"><span>{String(index + 1).padStart(2, "0")} / {project.name.toUpperCase()}</span><span className="hub-project-status"><i aria-hidden="true" />{live ? "Live" : "Soon"}</span></div>
+              <h3 id={`hub-project-${project.id}`}><span className="sr-only">{project.name}</span>{wordmark ? <img src={wordmark} alt="" width="180" height="48" /> : project.name}</h3>
+              {live && <Link className="hub-cover-link" href={project.href!} aria-label={`Open ${project.name} tools`}><span className="hub-cover-arrow"><Arrow diagonal /></span></Link>}
+            </div>
+            <div className="hub-project-body">
+              <ul className="hub-tool-links" aria-label={`${project.name} tools`}>{project.tools.map((tool, toolIndex) => <li key={tool}>{live ? <Link href={toolIndex === 1 ? `${project.href}/wallet` : project.href!} aria-label={`${project.name} ${tool}`}><span className="hub-tool-symbol"><ToolIcon wallet={toolIndex === 1} /></span><span>{tool}</span><Arrow /></Link> : <span className="hub-tool-pending">{tool}</span>}</li>)}</ul>
+              <a className="hub-external" href={project.website} target="_blank" rel="noopener noreferrer" aria-label={`Visit ${project.name} exchange (opens in a new tab)`}><span>Visit exchange</span><Arrow diagonal /></a>
+            </div>
+          </article>;
+        })}</div>
       </section>
     </main>
-    <footer className="site-footer hub-footer"><span>PERP TOOLS · COMMUNITY ANALYTICS</span><span>One place to explore your activity.</span></footer>
-  </div>;
+    <footer className="hub-footer"><span>Independent tools. A clearer view.</span><span><i aria-hidden="true">＋</i> More exchanges, soon.</span></footer>
+  </div></div>;
 }

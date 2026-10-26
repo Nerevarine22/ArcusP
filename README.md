@@ -1,18 +1,74 @@
 # Perp tools
 
-A Next.js App Router and TypeScript app with Arcus tools and a temporarily disabled
-multi-exchange mode. Add future projects through `lib/projects.ts`.
+## Extended points calculator
+
+The calculator is available at `/extended` and from its card on the project
+chooser. The home page and exchange navigation are enabled by default.
+
+The page uses Extended's official header logo, symbol, locally bundled Inter fonts,
+black background and teal `#00BC84` accent from https://extended.exchange/.
+The app reference itself returned HTTP 403 during development, so the public
+official website and the supplied points image were used for visual reference.
+
+Inputs are manual Xpoints, editable total points (default **70,000,000** from
+https://docs.extended.exchange/extended-resources/points-program), and manual FDV
+(starting scenario **$500M**). The supplied **1B XTEN genesis supply** and
+**300M XTEN / 30% community allocation** are fixed model inputs. Values assume
+proportional conversion; no eligibility or final conversion ratio is inferred.
+The summary shows USD value, XTEN quantity, pool share and value per point; the
+FDV table updates the same calculation. Settings persist separately under
+`extended-estimate-v1`, preserving Arcus and TxFlow settings.
+The table appears above Polymarket and uses its thresholds through $1B:
+**$150M, $300M, $500M, $800M, $1B**. The FDV preset buttons use the same values.
+Manual values remain editable without adding rows outside this fixed grid.
+
+Polymarket FDV is loaded through the server-only Heisenberg integration at
+`GET /api/extended/fdv`. Put `HEISENBERG_API_KEY` in the ignored `.env.local`
+file (see `.env.example`) and restart the server. Configure the same private
+variable in the production host before deploying. No key is sent to the browser.
+
+The fixed event is https://polymarket.com/event/extended-fdv-above-one-day-after-launch.
+Agent 574 retrieves its open thresholds; agent 568 retrieves bounded seven-day
+hourly candles for each YES token. The newest valid candle uses the bid/ask
+midpoint when the spread is at most 10 percentage points, otherwise its recorded
+trade close. Quotes over 24 hours old retain their last known percentage in the table and
+are excluded from the FDV estimate; quote times remain in tooltips and notices. Each row
+links to its contract. Partial data is labeled and missing values are never zero.
+
+A suggested FDV linearly interpolates the 50% crossing of the exceedance curve.
+This is a model-derived median, not a weighted average of overlapping contracts,
+a listed token price, or an expected FDV. Missing tail quotes do not block an
+available crossing; nonmonotone quotes disable the estimate. If all probabilities
+are on one side of 50%, only an upper/lower bound is displayed. The user applies
+the numeric estimate explicitly; refresh does not overwrite manual calculations.
+
+Responses are cached server-side for 60 seconds with concurrent requests shared
+per instance. A normal fresh event load makes eight Heisenberg requests for its
+seven thresholds; market pagination is bounded. Hourly quote times, partial data,
+notices and the calculation method are shown in the UI. There is no automatic
+polling. Errors retain the manual calculator and never expose provider response
+bodies, credentials or stack traces.
+
+A Next.js App Router and TypeScript app with Arcus, TxFlow and Extended tools
+and an enabled multi-exchange project chooser. Add future projects through `lib/projects.ts`.
 
 ## Enable or disable the project chooser and TxFlow
 
-The shared switch is `featureFlags.multiExchange` in `lib/features.ts`.
-It is currently **false**: `/`, `/txflow` and `/txflow/wallet` temporarily redirect
-to `/arcus`, the `All projects` navigation is hidden, and the TxFlow wallet API
-returns HTTP 503 without querying TxFlow. Arcus points and wallet tools stay available.
+To preview TxFlow separately, set `TXFLOW_ENABLED=true` in the ignored
+`.env.local` and restart the local server after building the updated source.
+This enables `/txflow`, `/txflow/wallet` and its API independently when the
+project chooser is disabled. The override defaults to disabled when unset;
+remove it or set it to `false` to hide TxFlow again.
 
-Set it to **true** to restore the chooser, TxFlow calculator, wallet analytics,
-API and project navigation together. Rebuild/redeploy in production after changing
-the switch. The source code, assets and saved browser settings are retained.
+The project chooser, exchange pages and **All projects** navigation are enabled
+by default locally and on deployments. `NEXT_PUBLIC_MULTI_EXCHANGE_ENABLED=false`
+temporarily disables the hub; set it to `true` or remove it to enable the hub again.
+This public boolean is bundled into browser navigation as well as read by the
+server, so rebuild/restart after changing it. Local `.env.local` stays ignored.
+
+When disabled, `/` redirects to `/arcus`; TxFlow routes/API also remain disabled
+unless the separate `TXFLOW_ENABLED` override above is enabled. The source,
+assets and saved browser settings are retained in both modes.
 
 The Arcus points estimator lives at `/arcus`, with wallet analytics at
 `/arcus/wallet`. The previous `/wallet` URL redirects to `/arcus/wallet`.
@@ -105,22 +161,38 @@ These are hypothetical scenarios; a token launch and airdrop are not guaranteed.
 Open `/txflow/wallet` from either TxFlow tool. `POST /api/txflow/wallet` proxies
 read-only queries to `https://rpc.txflow.com/info` with
 `x-api-version: 2026-08-16`; no authentication, wallet connection, or signature.
-Earned points are entered beside the wallet address. Select all-time total points
-or **Epoch 1: 12 October 2026, 00:00 UTC → 19 October 2026, 00:00 UTC**.
-The primary season choices are **S0** (all indexed activity strictly before
-12 October 2026, 00:00 UTC) and **S1 · Epoch 1**. S0 points have not been distributed:
-its input is disabled, points are shown as Pending, per-point ratios and exported
-point values stay null. Trading, fees, funding and holding statistics still work.
-The latest distributed epoch is the default for new wallet settings. Existing
-saved period selections and Epoch 1 point values are preserved. All-time and
-rolling periods remain in a separate group; all-time includes pending S0 activity
-and must only be compared with a complete matching points total.
-Epochs use Monday-to-Monday half-open windows: the opening boundary is included,
-the ending boundary belongs to the next epoch. The inclusive RPC end filter is
-set to one millisecond before that boundary. Volume, fees, funding, daily and
-market breakdowns all use the exact same window. Per-point ratios update from
-the selected period's separately saved points; no all-time total is reused for
-an epoch. Zero points are valid but cannot produce per-point ratios.
+Points are entered at the top beside the wallet and analysis scope. Three main views:
+
+- **Awarded epochs only** (default): enter each included epoch's points separately;
+  the total is summed automatically once all fields are valid, including zero.
+  Until then, a combined total can be entered manually. Editing an epoch clears
+  the old manual total; per-epoch inputs are shared across analysis modes. Only confirmed
+  received distributions contribute executions, fees and funding. Gaps between
+  selected epochs are excluded, while fills within gaps may establish FIFO context.
+- **Season 1 / individual epoch**: enter each epoch's points separately. Both S1
+  epochs appear as selectable analysis cards with their own volume, fees, ratios,
+  markets and holding profile. Pending distributions retain trading statistics.
+- **All available history**: all indexed activity, including ongoing or unawarded
+  periods. Ratios are calculated per matching epoch, not against an incomplete total.
+
+Explicit UTC windows are S0 before 12 October 2026; S1 Epoch 1 from 12 October
+00:00 through 19 October 23:59:59.999; S1 Epoch 2 from 20 October 00:00 through
+26 October 23:59:59.999. RPC upper bounds exclude the next day's midnight.
+Epoch 1 was distributed on 20 October. For the requested local preview, S0 and Epoch 2
+are marked distributed on 27 October and included by default. Scans still stop
+at the actual current time; future executions are never invented. Dates alone never mark unconfigured distributions received. Users confirm **Points received** after
+actual distribution; the control is enabled after the snapshot window ends.
+Confirmation is stored per address. Changing receipts clears the combined total
+and report so a stale total cannot silently be reused for a different scope.
+
+Existing saved wallet, period and epoch point values migrate without loss.
+Epoch points are saved separately from the combined awarded total. Zero is a valid
+point value but cannot produce a per-point ratio. Missing points remain unknown.
+Manual epoch ratios require complete selected fills and positive entered points.
+Inputs remain enabled before distribution, including S0 and Epoch 2. Pending
+distributions with entered points are labelled as manual comparisons; an ongoing
+epoch uses trades through the scan cutoff. Manual entry does not mark points as
+received or add that epoch to the awarded-only scan. Future epochs are not inferred from a calendar.
 
 Other supported trade periods: 24 hours, 7 days, 30 days, and 90 days. Only perpetual
 accounts are queried. Outcome accounts are excluded.

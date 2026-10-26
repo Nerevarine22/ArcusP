@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ThemeToggle from "@/components/theme-toggle";
 import ReferralOffer from "@/components/referral-offer";
+import { featureFlags } from "@/lib/features";
 
 export default function TxflowHeader({ initialTheme, active }: { initialTheme: "light" | "dark"; active: "points" | "wallet" }) {
   return <>
@@ -10,7 +11,7 @@ export default function TxflowHeader({ initialTheme, active }: { initialTheme: "
         <span className="tf-product">{active === "wallet" ? "WALLET ANALYTICS" : "POINTS ESTIMATOR"}</span>
       </Link>
       <nav aria-label="TxFlow navigation" className="tf-nav">
-        <Link href="/" className="tf-back">← All projects</Link>
+        {featureFlags.multiExchange && <Link href="/" className="tf-back">← All projects</Link>}
         <ReferralOffer href="https://app.txflow.com/r/TXATOMS" code="TXATOMS" label="Receive 5% off on all trading fees" className="tf-referral" />
         <ThemeToggle initialTheme={initialTheme} />
       </nav>

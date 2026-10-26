@@ -19,3 +19,24 @@ export function parsePoints(value: string): number | null {
   const parsed = Number(value.replace(",", "."));
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
+
+/** A combined epoch total is known only when every included value is valid. */
+export function sumPointInputs(values: string[]): number | null {
+  if (!values.length) return null;
+  let total = 0;
+  for (const value of values) {
+    const points = parsePoints(value);
+    if (points === null) return null;
+    total += points;
+  }
+  return Number.isFinite(total) ? Number(total.toPrecision(15)) : null;
+}
+
+/** Price and token quantities for a fixed token allocation and a points pool. */
+export function estimateTokenAllocation(fdv: number, totalPoints: number, points: number, supply: number, allocatedTokens: number) {
+  if (![supply, allocatedTokens].every(Number.isFinite) || supply <= 0 || allocatedTokens <= 0 || allocatedTokens > supply) return null;
+  const result = estimate(fdv, allocatedTokens / supply * 100, totalPoints, points);
+  if (!result) return null;
+  return { ...result, tokenPrice: fdv / supply, tokensPerPoint: allocatedTokens / totalPoints,
+    tokens: allocatedTokens * (points / totalPoints) };
+}

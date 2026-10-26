@@ -27,4 +27,13 @@ export const projects: Project[] = [
     href: "/txflow",
     website: "https://app.txflow.com/r/TXATOMS",
   },
+  {
+    id: "extended",
+    name: "Extended",
+    status: "available",
+    description: "Explore the value of your Xpoints across XTEN valuations and a fixed 30% community allocation.",
+    tools: ["Points calculator"],
+    href: "/extended",
+    website: "https://app.extended.exchange/",
+  },
 ];

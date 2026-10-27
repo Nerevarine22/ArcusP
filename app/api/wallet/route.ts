@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { collectArcusResearch } from "@/lib/research-collection";
 import { analyzePointsWeeks, collectFills, normalizeStats, parseArcusJson, record, summarizeScan, verifyEmptyPointsWeeks, type WalletFill, type WalletReport, type WalletStats } from "@/lib/wallet-analytics";
 
 export const runtime = "nodejs";
@@ -73,5 +74,6 @@ export async function POST(request: NextRequest) {
   const report: WalletReport = { address, accountScope: scope, fetchedAt: new Date().toISOString(), range: { from: from === null ? null : new Date(from).toISOString(), to: new Date(to).toISOString() },
     scan: { complete, pages, subaccounts: completed, warnings, verifiedEmptyWeeks, recoveredFillCount }, stats, summary: summarizeScan(selectedFills, complete), fills: selectedFills,
     weekly: analyzePointsWeeks(fills, { from, to, complete, enabled: includeWeekly }) };
-  return NextResponse.json(report, { headers });
+  const research = await collectArcusResearch(report, body.research);
+  return NextResponse.json({ ...report, ...(research ? { research } : {}) }, { headers });
 }

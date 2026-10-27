@@ -1,4 +1,5 @@
 import type { PointWeek } from "./leaderboard";
+import type { ResearchStatus } from "./research-data";
 import { parse } from "lossless-json";
 
 export type WalletFill = {
@@ -16,6 +17,7 @@ export type WalletStats = {
   feeTier: number | null; makerFeeBps: number | null; takerFeeBps: number | null;
 };
 export type WalletReport = {
+  research?: ResearchStatus;
   address: string; accountScope: "all" | number; fetchedAt: string;
   range: { from: string | null; to: string };
   scan: { complete: boolean; pages: number; subaccounts: number[]; warnings: string[]; verifiedEmptyWeeks?: number[]; recoveredFillCount?: number };

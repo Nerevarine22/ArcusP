@@ -1,3 +1,5 @@
+import type { ResearchStatus } from "./research-data";
+
 // S0 and Epoch 2 are marked distributed for the requested local preview.
 export const TXFLOW_EPOCHS = {
   S0: { label: "Season 0", start: null, end: "2026-10-12T00:00:00.000Z", dates: "Before 12 October 2026", distribution: "2026-10-27", distributed: true },
@@ -79,6 +81,7 @@ export type TxOverview = { period: string; pnl: string; roe: string; volume: str
 export type TxPosition = { market: string; size: string; entryPrice: string | null; markPrice: string | null; liquidationPrice: string | null; value: string; margin: string; unrealizedPnl: string; leverage: number | null; marginMode: string };
 export type TxAccount = { equity: string; withdrawable: string; marginUsed: string; positionValue: string; time: number | null; positions: TxPosition[] };
 export type TxWalletReport = {
+  research?: ResearchStatus;
   address: string; period: TxflowPeriod; pointsStatus: "pending" | "manual"; fetchedAt: string; range: { from: string | null; to: string; endExclusive: boolean };
   fillsScan: Omit<TxScan<TxFill>, "rows">; fundingScan: Omit<TxScan<TxFunding>, "rows">;
   summary: TxSummary | null; funding: { paid: string; received: string; net: string; count: number } | null;

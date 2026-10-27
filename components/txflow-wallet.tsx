@@ -6,6 +6,9 @@ import TxflowHolding from "@/components/txflow-holding";
 import TxflowEpochInputs from "@/components/txflow-epoch-inputs";
 import TxflowEpochAnalysis from "@/components/txflow-epoch-analysis";
 import { useTxflowWallet } from "@/hooks/use-txflow-wallet";
+import ResearchSharing from "@/components/research-sharing";
+import { useResearchSharing } from "@/hooks/use-research-sharing";
+import { RESEARCH_CONSENT } from "@/lib/research-data";
 import { parsePoints, sumPointInputs } from "@/lib/estimator";
 import { TXFLOW_EPOCHS, TXFLOW_PERIODS, txflowReceivedEpochs, type TxflowEpochId, type TxflowPeriod, type TxWalletReport } from "@/lib/txflow-wallet";
 
@@ -20,6 +23,7 @@ const signClass = (value: string | undefined) => Number(value) < 0 ? "tf-negativ
 let recentReport: TxWalletReport | null = null;
 
 export default function TxflowWallet({ initialTheme }: { initialTheme: "light" | "dark" }) {
+  const [shareResearch, setShareResearch] = useResearchSharing();
   const [settings, update, ready] = useTxflowWallet();
   const { address, period } = settings;
   const [storedReport, setReport] = useState<TxWalletReport | null>(null);
@@ -59,7 +63,10 @@ export default function TxflowWallet({ initialTheme }: { initialTheme: "light" |
     if (!/^0x[0-9a-f]{40}$/.test(normalizedAddress)) { setError("Enter a valid 0x wallet address with 40 hexadecimal characters."); return; }
     const request = new AbortController(); controller.current = request; setLoading(true);
     try {
-      const response = await fetch("/api/txflow/wallet", { method: "POST", cache: "no-store", signal: request.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ address: normalizedAddress, period, awardedEpochs: received }) });
+      const response = await fetch("/api/txflow/wallet", { method: "POST", cache: "no-store", signal: request.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ address: normalizedAddress, period, awardedEpochs: received,
+        ...(shareResearch ? { research: { consent: true, version: RESEARCH_CONSENT,
+          totalPoints: points === null ? "" : String(points),
+          points: Object.fromEntries(Object.keys(TXFLOW_EPOCHS).map(id => [id, settings.points[`${normalizedAddress}:${id}`] ?? ""])) } } : {}) }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not load TxFlow wallet data.");
       if (!request.signal.aborted) { recentReport = data as TxWalletReport; setReport(recentReport); }
@@ -97,6 +104,7 @@ export default function TxflowWallet({ initialTheme }: { initialTheme: "light" |
           <div className="tf-input-group"><label htmlFor="tf-wallet-period">Analysis scope<span>UTC</span></label><select id="tf-wallet-period" value={period} onChange={event => { reset(); update({ period: event.target.value as TxflowPeriod }); }}><optgroup label="Overview"><option value="AWARDED">{TXFLOW_PERIODS.AWARDED}</option><option value="ALLTIME">{TXFLOW_PERIODS.ALLTIME}</option></optgroup><optgroup label="Seasons"><option value="S1">{TXFLOW_PERIODS.S1}</option><option value="S0">{TXFLOW_PERIODS.S0}</option></optgroup><optgroup label="Individual epochs"><option value="EPOCH_1">{TXFLOW_PERIODS.EPOCH_1}</option><option value="EPOCH_2">{TXFLOW_PERIODS.EPOCH_2}</option></optgroup><optgroup label="Rolling trade periods">{["24H", "7D", "30D", "90D"].map(value => <option value={value} key={value}>{TXFLOW_PERIODS[value as TxflowPeriod]}</option>)}</optgroup></select></div>
           <TxflowEpochInputs settings={settings} address={normalizedAddress} now={now} onPoints={(id, value) => update({ points: { ...settings.points, [`${normalizedAddress}:${id}`]: value, ...(Object.hasOwn(TXFLOW_EPOCHS, id) ? { [`${normalizedAddress}:AWARDED`]: "" } : {}) } })} onReceived={(id, value) => { reset(); update({ received: { ...settings.received, [`${normalizedAddress}:${id}`]: value }, points: { ...settings.points, [`${normalizedAddress}:AWARDED`]: "" } }); }} />
           <button className="tf-analyze-button" type="submit" disabled={loading || !ready}>{loading ? "Analyzing…" : "Analyze wallet"}<span aria-hidden="true">↗</span></button>
+          <ResearchSharing checked={shareResearch} onChange={setShareResearch} status={report?.research} />
         </form>
         <div id="tf-points-period-note" className="tf-points-period-note is-epoch"><span aria-hidden="true">↳</span><p><b>{note.title}</b><span>{note.text}</span></p></div>
         <div className="tf-wallet-query-footer"><p id="tf-wallet-status" role="status" className={error ? "tf-error" : "tf-help"}>{error || (loading ? "Reading executions, funding and current positions…" : "No wallet connection or signature. Your address is remembered in this browser.")}</p>{loading && <button type="button" className="tf-cancel" onClick={reset}>Cancel</button>}</div>

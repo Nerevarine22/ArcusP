@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { collectTxflowResearch } from "@/lib/research-collection";
 import { parse } from "lossless-json";
 import { featureFlags } from "@/lib/features";
 import { TXFLOW_PERIODS, analyzeTxHolding, buildTxEpochReports, collectTxHistory, groupTxFills, normalizeTxAccount, normalizeTxFill, normalizeTxFunding, normalizeTxOverview, summarizeTxFills, summarizeTxFunding, txRecord, txflowAwardedEpochs, txflowEpochIds, txflowInWindows, txflowPeriodRange, txflowSelectionWindows, txflowPointsStatus, type TxflowEpochId, type TxflowPeriod, type TxflowWindow, type TxWalletReport, type TxScan, type TxFill, type TxHoldingAnalysis } from "@/lib/txflow-wallet";
@@ -77,5 +78,6 @@ export async function POST(request: NextRequest) {
     epochs: buildTxEpochReports([...priorScan.rows, ...fillScan.rows], fundingScan.rows, txflowEpochIds(period, awardedEpochs, now), now,
       { fillsStatus: fillScan.status, fundingStatus: fundingScan.status, historyStatus: holdingOptions.historyStatus, historyPages: holdingOptions.historyPages }),
     ...groupTxFills(selectedFills) };
-  return NextResponse.json(report, { headers });
+  const research = await collectTxflowResearch(report, body.research);
+  return NextResponse.json({ ...report, ...(research ? { research } : {}) }, { headers });
 }

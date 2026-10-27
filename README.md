@@ -1,5 +1,13 @@
 # Perp tools
 
+## Wallet research collection
+
+Arcus and TxFlow wallet analyses can optionally contribute to a private Neon PostgreSQL dataset.
+One record per exchange/wallet contains separate weekly/epoch observations, point provenance,
+trading metrics, holding mix and completeness flags. Repeat scans merge without duplicating wallets.
+Set private `DATABASE_URL`, run `npm run research:init`, and redeploy. Export with
+`npm run research:export` to JSON and CSV. See [setup and dataset format](docs/wallet-research.md).
+
 ## Extended points calculator
 
 The calculator is available at `/extended` and from its card on the project

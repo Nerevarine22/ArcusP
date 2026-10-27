@@ -112,7 +112,7 @@ TxFlow's calculator lives at `/txflow`. It uses manual user points and selectabl
 total pool scenarios from the supplied simulation: Basic **45.6M**, Bullish
 **52.1M**, or Manual. The last custom pool is retained when switching scenarios.
 These approximate totals are assumptions, not official TxFlow totals. FDV presets
-are **$250M, $500M, $750M, $1B** and allocations **15%, 20%, 25%**.
+are **$100M, $250M, $500M, $750M, $1B** and allocations **15%, 20%, 25%, 30%**.
 It uses the same proportional calculation as Arcus. The matrix
 switches between per-point and personal values, and cell selection updates the
 scenario controls. Inputs and display mode persist separately under

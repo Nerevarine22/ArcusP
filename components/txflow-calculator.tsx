@@ -77,14 +77,14 @@ export default function TxflowCalculator({ initialTheme }: { initialTheme: "ligh
             <div className="tf-input-group">
               <label htmlFor="tf-fdv">Token FDV<strong>{fdvLabel(fdv)}</strong></label>
               <div className="tf-presets tf-fdv-presets" role="group" aria-label="FDV presets">{FDV_PRESETS.map(value => <button key={value} type="button" aria-pressed={fdv === value} onClick={() => update({ fdv: value })}>{fdvLabel(value)}</button>)}</div>
-              <input id="tf-fdv" type="range" min={250_000_000} max={1_000_000_000} step={25_000_000} value={fdv} onChange={event => update({ fdv: Number(event.target.value) })} aria-valuetext={fdvLabel(fdv)} />
-              <div className="tf-range-labels"><span>$250M</span><span>$1B</span></div>
+              <input id="tf-fdv" type="range" min={FDV_PRESETS[0]} max={FDV_PRESETS.at(-1)!} step={25_000_000} value={fdv} onChange={event => update({ fdv: Number(event.target.value) })} aria-valuetext={fdvLabel(fdv)} />
+              <div className="tf-range-labels"><span>{fdvLabel(FDV_PRESETS[0])}</span><span>{fdvLabel(FDV_PRESETS.at(-1)!)}</span></div>
             </div>
             <div className="tf-input-group">
               <label htmlFor="tf-allocation">Airdrop allocation<strong>{allocation}%</strong></label>
               <div className="tf-presets" role="group" aria-label="Allocation presets">{ALLOCATION_PRESETS.map(value => <button key={value} type="button" aria-pressed={allocation === value} onClick={() => update({ allocation: value })}>{value}%</button>)}</div>
-              <input id="tf-allocation" type="range" min={15} max={25} step={1} value={allocation} onChange={event => update({ allocation: Number(event.target.value) })} aria-valuetext={`${allocation}%`} />
-              <div className="tf-range-labels"><span>15%</span><span>25%</span></div>
+              <input id="tf-allocation" type="range" min={ALLOCATION_PRESETS[0]} max={ALLOCATION_PRESETS.at(-1)!} step={1} value={allocation} onChange={event => update({ allocation: Number(event.target.value) })} aria-valuetext={`${allocation}%`} />
+              <div className="tf-range-labels"><span>{ALLOCATION_PRESETS[0]}%</span><span>{ALLOCATION_PRESETS.at(-1)}%</span></div>
             </div>
             <p className="tf-saved-note"><span aria-hidden="true">↳</span> Your calculation is saved in this browser.</p>
           </section>
@@ -99,7 +99,7 @@ export default function TxflowCalculator({ initialTheme }: { initialTheme: "ligh
               <div className="tf-matrix-heading"><div><span className="tf-eyebrow">03 / COMPARE OUTCOMES</span><h2 id="tf-matrix-title">Scenario matrix</h2></div><div className="tf-view-toggle" role="group" aria-label="Matrix display"><button type="button" aria-pressed={perPoint} onClick={() => update({ perPoint: true })}>Per point</button><button type="button" aria-pressed={!perPoint} onClick={() => update({ perPoint: false })}>My points</button></div></div>
               <p className="tf-matrix-description"><b>{poolLabel} pool{validTotal ? ` · ${number.format(total)} PTS` : ""}</b><br />{perPoint ? "Implied value of one point" : points !== null && !pointsError ? `${number.format(points)} PTS · your estimated allocation` : "Enter your points to see your estimated allocation"} <span>· Select a cell to explore</span></p>
               <p className="tf-table-hint">Swipe to view all scenarios →</p>
-              <div className="tf-table-wrap"><table className="tf-table"><caption className="sr-only">{perPoint ? "Estimated value per point" : "Estimated value of your points"} by token FDV and airdrop allocation</caption><thead><tr><th scope="col">TOKEN FDV</th>{ALLOCATION_PRESETS.map(value => <th key={value} scope="col"><b>{value}%</b><span>ALLOCATION</span></th>)}</tr></thead><tbody>{FDV_PRESETS.map(row => <tr key={row}><th scope="row">{fdvLabel(row)}</th>{ALLOCATION_PRESETS.map(column => {
+              <div className="tf-table-wrap" data-lenis-prevent-horizontal><table className="tf-table"><caption className="sr-only">{perPoint ? "Estimated value per point" : "Estimated value of your points"} by token FDV and airdrop allocation</caption><thead><tr><th scope="col">TOKEN FDV</th>{ALLOCATION_PRESETS.map(value => <th key={value} scope="col"><b>{value}%</b><span>ALLOCATION</span></th>)}</tr></thead><tbody>{FDV_PRESETS.map(row => <tr key={row}><th scope="row">{fdvLabel(row)}</th>{ALLOCATION_PRESETS.map(column => {
                 const cell = validTotal ? estimate(row, column, total, perPoint ? 0 : (points ?? -1)) : null;
                 const active = row === fdv && column === allocation;
                 const cellValue = matrixReady && cell ? (perPoint ? unitUsd.format(cell.valuePerPoint) : usd.format(cell.value)) : "—";

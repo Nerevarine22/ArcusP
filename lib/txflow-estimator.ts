@@ -1,5 +1,5 @@
-export const TXFLOW_FDV_PRESETS = [250_000_000, 500_000_000, 750_000_000, 1_000_000_000];
-export const TXFLOW_ALLOCATION_PRESETS = [15, 20, 25];
+export const TXFLOW_FDV_PRESETS = [100_000_000, 250_000_000, 500_000_000, 750_000_000, 1_000_000_000];
+export const TXFLOW_ALLOCATION_PRESETS = [15, 20, 25, 30];
 export const TXFLOW_POOL_PRESETS = { basic: 45_600_000, bullish: 52_100_000 };
 export type TxflowPoolMode = keyof typeof TXFLOW_POOL_PRESETS | "manual";
 export type TxflowSettings = {
@@ -13,7 +13,7 @@ export type TxflowSettings = {
 
 export const TXFLOW_DEFAULTS: TxflowSettings = {
   pointsInput: "", totalInput: "", poolMode: "basic",
-  fdv: TXFLOW_FDV_PRESETS[0], allocation: TXFLOW_ALLOCATION_PRESETS[0], perPoint: true,
+  fdv: 250_000_000, allocation: TXFLOW_ALLOCATION_PRESETS[0], perPoint: true,
 };
 
 export function parseTxflowSettings(raw: string | null): TxflowSettings {
@@ -26,8 +26,8 @@ export function parseTxflowSettings(raw: string | null): TxflowSettings {
       totalInput,
       // Keep earlier manual calculations when upgrading to selectable pool scenarios.
       poolMode: ["basic", "bullish", "manual"].includes(saved.poolMode) ? saved.poolMode : totalInput.trim() ? "manual" : "basic",
-      fdv: Number.isFinite(saved.fdv) && saved.fdv >= 250_000_000 && saved.fdv <= 1_000_000_000 ? saved.fdv : TXFLOW_DEFAULTS.fdv,
-      allocation: Number.isFinite(saved.allocation) && saved.allocation >= 15 && saved.allocation <= 25 ? saved.allocation : TXFLOW_DEFAULTS.allocation,
+      fdv: Number.isFinite(saved.fdv) && saved.fdv >= TXFLOW_FDV_PRESETS[0] && saved.fdv <= TXFLOW_FDV_PRESETS.at(-1)! ? saved.fdv : TXFLOW_DEFAULTS.fdv,
+      allocation: Number.isFinite(saved.allocation) && saved.allocation >= TXFLOW_ALLOCATION_PRESETS[0] && saved.allocation <= TXFLOW_ALLOCATION_PRESETS.at(-1)! ? saved.allocation : TXFLOW_DEFAULTS.allocation,
       perPoint: typeof saved.perPoint === "boolean" ? saved.perPoint : true,
     };
   } catch { return TXFLOW_DEFAULTS; }

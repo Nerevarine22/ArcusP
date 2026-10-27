@@ -402,7 +402,8 @@
   .txflow-page .tf-view-toggle button { min-height:36px; padding:7px 15px; }
   .txflow-page .tf-matrix-description { font-size:9px; margin-top:13px; }
   .txflow-page .tf-matrix-description>span { display:block; }
-  .txflow-page .tf-table { border-spacing:3px 5px; min-width:320px; }
+  .txflow-page .tf-table { border-spacing:3px 5px; min-width:440px; }
+  .txflow-page .tf-table-hint { display:block; font-size:9px; margin:0 7px 16px; color:var(--tf-muted); }
   .txflow-page .tf-table thead th:first-child { width:51px; font-size:7px; }
   .txflow-page .tf-table thead b { font-size:14px; }
   .txflow-page .tf-table thead span { font-size:6px; letter-spacing:.3px; }

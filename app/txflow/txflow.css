@@ -461,6 +461,23 @@
 .txflow-page .tf-epoch-markets h3 { font-size:13px; font-weight:500; margin:0 0 13px; }
 .txflow-page .tf-epoch-markets>div { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 0; border-bottom:1px solid var(--tf-line); font-size:12px; }
 .txflow-page .tf-epoch-markets small { display:block; color:var(--tf-muted); margin-top:6px; font-size:10px; }
+.txflow-page .tf-epoch-execution { padding:22px 0; border-bottom:1px solid var(--tf-line); }
+.txflow-page .tf-epoch-execution>h3 { font-size:14px; font-weight:500; margin:0; }
+.txflow-page .tf-execution-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:16px 0; }
+.txflow-page .tf-execution-role { min-width:0; padding:17px; border:1px solid var(--tf-line); background:var(--tf-fill); }
+.txflow-page .tf-execution-role-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
+.txflow-page .tf-execution-role-heading h4 { display:flex; align-items:center; gap:8px; margin:0; font-size:13px; font-weight:500; }
+.txflow-page .tf-execution-role-heading i { display:inline-block; width:6px; height:6px; }
+.txflow-page .tf-execution-role-heading>span { color:var(--tf-muted); font-size:9px; }
+.txflow-page .tf-execution-role dl { margin:0; }
+.txflow-page .tf-execution-role dl>div { display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px; margin-top:12px; font-size:11px; }
+.txflow-page .tf-execution-role dt { color:var(--tf-muted); }
+.txflow-page .tf-execution-role dd { margin:0; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+.txflow-page .tf-execution-role dl>div:last-child { border-top:1px solid var(--tf-line); padding-top:12px; }
+.txflow-page .tf-execution-profile .tf-role-maker { background:var(--tf-accent); }
+.txflow-page .tf-execution-profile .tf-role-taker { background:#73966d; }
+.txflow-page .tf-execution-profile .tf-role-unknown { background:#92988c; }
+@media(max-width:540px) { .txflow-page .tf-execution-grid { grid-template-columns:1fr; }.txflow-page .tf-execution-role { padding:15px; } }
 @media(max-width:900px) {
   .txflow-page .tf-wallet-form { grid-template-columns:minmax(0,1fr) 240px; }
   .txflow-page .tf-wallet-form>.tf-analyze-button { grid-column:1/-1; grid-row:auto; }

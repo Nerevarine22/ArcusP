@@ -1,4 +1,4 @@
--- Run once per database with npm run research:init. No wallet is stored without explicit consent.
+-- Run once per database with npm run research:init. Successful analyses are saved automatically.
 CREATE SCHEMA IF NOT EXISTS analytics_research;
 REVOKE ALL ON SCHEMA analytics_research FROM PUBLIC;
 CREATE TABLE IF NOT EXISTS analytics_research.wallets (

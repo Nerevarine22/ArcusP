@@ -75,5 +75,5 @@ export async function POST(request: NextRequest) {
     scan: { complete, pages, subaccounts: completed, warnings, verifiedEmptyWeeks, recoveredFillCount }, stats, summary: summarizeScan(selectedFills, complete), fills: selectedFills,
     weekly: analyzePointsWeeks(fills, { from, to, complete, enabled: includeWeekly }) };
   const research = await collectArcusResearch(report, body.research);
-  return NextResponse.json({ ...report, ...(research ? { research } : {}) }, { headers });
+  return NextResponse.json({ ...report, research }, { headers });
 }

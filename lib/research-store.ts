@@ -14,7 +14,7 @@ function database() {
 export async function saveResearchWallet(incoming: ResearchWallet): Promise<ResearchStatus> {
   try {
     const sql = database();
-    if (!sql) return { status: "not_configured", message: "Research sharing is not connected yet. Your analysis is still available." };
+    if (!sql) return { status: "not_configured", message: "Analytics storage is not connected yet. Your results are still available." };
     await sql.begin(async tx => {
       // The unique key plus row lock serializes concurrent writes for the same wallet.
       await tx`INSERT INTO analytics_research.wallets (project, address, document)
@@ -25,10 +25,10 @@ export async function saveResearchWallet(incoming: ResearchWallet): Promise<Rese
       await tx`UPDATE analytics_research.wallets SET document = ${tx.json(JSON.parse(JSON.stringify(merged)))}, updated_at = now()
         WHERE project = ${incoming.project} AND address = ${incoming.address}`;
     });
-    return { status: "saved", message: "Research record saved. This wallet's existing record was updated without duplicates." };
+    return { status: "saved", message: "Analysis saved." };
   } catch {
     // Database errors can contain hostnames and credentials. Never return or log the driver error.
     console.warn("Research record could not be saved. Check the private database connection and migration.");
-    return { status: "failed", message: "Research sharing could not be saved. Your analysis is still available; retry Analyze to share it." };
+    return { status: "failed", message: "Analysis could not be saved. Your results are still available; run Analyze again to retry." };
   }
 }

@@ -5,9 +5,7 @@ import SiteHeader from "@/components/site-header";
 import WeeklyHoldingAnalysis from "@/components/weekly-analysis";
 import type { WalletReport } from "@/lib/wallet-analytics";
 import type { SearchResult } from "@/lib/leaderboard";
-import ResearchSharing from "@/components/research-sharing";
-import { useResearchSharing } from "@/hooks/use-research-sharing";
-import { RESEARCH_CONSENT } from "@/lib/research-data";
+import ResearchStorageStatus from "@/components/research-storage-status";
 import { useRememberedName } from "@/hooks/use-remembered-name";
 import { useRememberedWallet } from "@/hooks/use-remembered-wallet";
 
@@ -19,7 +17,6 @@ const money = (value: string | number | null | undefined, fine = false) => value
 const normalize = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
 
 export default function WalletAnalytics({ initialTheme }: { initialTheme: "light" | "dark" }) {
-  const [shareResearch, setShareResearch] = useResearchSharing();
   const [address, setAddress] = useRememberedWallet();
   const [scope, setScope] = useState("all");
   const [period, setPeriod] = useState("all");
@@ -66,7 +63,7 @@ export default function WalletAnalytics({ initialTheme }: { initialTheme: "light
     try {
       const response = await fetch("/api/wallet", { method: "POST", cache: "no-store", headers: { "Content-Type": "application/json" }, signal: controller.signal,
         body: JSON.stringify({ address: address.trim(), accountScope: scope === "all" ? "all" : Number(scope), period, includeWeekly,
-          ...(shareResearch ? { research: { consent: true, version: RESEARCH_CONSENT, name } } : {}),
+          research: { name },
           ...(period === "custom" ? { from: `${from}:00Z`, to: `${to}:00Z` } : {}) }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not load wallet data.");
@@ -134,7 +131,7 @@ export default function WalletAnalytics({ initialTheme }: { initialTheme: "light
             <div><label htmlFor="wallet-scope">Account scope</label><select id="wallet-scope" value={scope} onChange={event => { resetReport(); setScope(event.target.value); }}><option value="all">All subaccounts (0–9)</option>{Array.from({ length: 10 }, (_, index) => <option key={index} value={index}>Subaccount {index}{index === 0 ? " · Primary" : ""}</option>)}</select></div>
             {period === "custom" && <><div><label htmlFor="wallet-from">From (UTC)</label><input id="wallet-from" type="datetime-local" value={from} required onChange={event => { resetReport(); setFrom(event.target.value); }} /></div><div><label htmlFor="wallet-to">To (UTC)</label><input id="wallet-to" type="datetime-local" value={to} required onChange={event => { resetReport(); setTo(event.target.value); }} /></div></>}
           </div><label className="wallet-weekly-option"><input type="checkbox" checked={includeWeekly} onChange={event => { resetReport(); setIncludeWeekly(event.target.checked); }} />Include weekly holding analysis</label><p className="wallet-small wallet-history-hint">Weekly analysis reads earlier fills to match positions opened before the selected period.</p></details>
-          <ResearchSharing checked={shareResearch} onChange={setShareResearch} status={report?.research} />
+          <ResearchStorageStatus status={report?.research} />
         </form>
         <div className="lookup-feedback"><p id="wallet-status" className={error ? "error" : "muted"} role="status">{error || (loading ? "Reading account stats and trade history…" : "Name-to-wallet matching is supplied by you. The API does not verify this link.")}</p><p className="points-load-status" role="status">{pointsLoading ? "Loading points snapshots…" : pointsNote}</p></div>
       </section>

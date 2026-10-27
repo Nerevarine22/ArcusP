@@ -65,6 +65,10 @@ test('TxFlow decimal products, fee rebates and liquidity roles reconcile without
   assert.equal(summary.makerVolume,'650.105');
   assert.equal(summary.takerVolume,'650.105');
   assert.equal(summary.unknownRoleVolume,'650.105');
+  assert.deepEqual(summary.feesByRole, { maker: { paid: '0', rebates: '0.01', net: '-0.01' }, taker: { paid: '0.02', rebates: '0', net: '0.02' }, unknown: { paid: '0.001', rebates: '0', net: '0.001' } });
+  for (const [roleField, totalField] of [['paid','feesPaid'],['rebates','rebates'],['net','netFees']]) {
+    assert.equal(txUsd(Object.values(summary.feesByRole).reduce((total, fees) => total + txAtoms(fees[roleField]), BigInt(0))), summary[totalField]);
+  }
   assert.equal(txUsd(txAtoms('0.3452479470322310936331832846')),'0.345247947032231094');
 });
 
@@ -75,6 +79,7 @@ test('non-USDC fees stay excluded and unknown roles never become maker via cross
   assert.equal(summary.netFees,'0');
   assert.deepEqual(summary.excludedFeeTokens,['BTC']);
   assert.equal(summary.unknownRoleVolume,'650.105');
+  assert.deepEqual(summary.feesByRole.unknown, { paid: '0', rebates: '0', net: '0' });
   assert.throws(() => normalizeTxFill(rawFill({instrumentType:'outcome'})),/non-perpetual/);
   assert.throws(() => normalizeTxFill(rawFill({tid:9007199254740992})),/Unsafe/);
 });
@@ -141,6 +146,9 @@ test('market and UTC-day aggregates reconcile volume and fees across midnight', 
   for (const group of [grouped.markets,grouped.days]) {
     assert.equal(txUsd(group.reduce((total,row)=>total+txAtoms(row.volume),BigInt(0))),summary.volume);
     assert.equal(txUsd(group.reduce((total,row)=>total+txAtoms(row.netFees),BigInt(0))),summary.netFees);
+    for (const role of ['maker','taker','unknown']) for (const field of ['paid','rebates','net']) {
+      assert.equal(txUsd(group.reduce((total,row)=>total+txAtoms(row.feesByRole[role][field]),BigInt(0))),summary.feesByRole[role][field]);
+    }
   }
 });
 

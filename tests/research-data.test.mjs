@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { RESEARCH_CONSENT, arcusResearch, txflowResearch, researchInput, mergeResearchWallet } from '../lib/research-data.ts';
+import { arcusResearch, txflowResearch, researchInput, mergeResearchWallet } from '../lib/research-data.ts';
 import { researchCsv } from '../lib/research-export.ts';
 import { normalizeFill, summarizeFills, analyzePointsWeeks } from '../lib/wallet-analytics.ts';
 import { TXFLOW_EPOCHS, buildTxEpochReports, summarizeTxFills, normalizeTxFill, txflowSelectionWindows } from '../lib/txflow-wallet.ts';
@@ -25,11 +25,11 @@ function txReport() {
     windows: txflowSelectionWindows('AWARDED', Date.parse(fetchedAt)).map(window => ({ from: window.from === null ? null : new Date(window.from).toISOString(), to: new Date(window.to).toISOString(), endExclusive: window.endExclusive })) };
 }
 
-test('research requires explicit versioned consent and rejects invalid manual point metadata', () => {
-  for (const input of [null, {}, { consent: true }, { consent: false, version: RESEARCH_CONSENT }]) assert.equal(researchInput(input), null);
-  const input = researchInput({ consent: true, version: RESEARCH_CONSENT, name: '  Test   User  ', points: { S0: '0', EPOCH_1: '10.25', EPOCH_2: '-1', bad: '100' }, totalPoints: 'Infinity', report: { volume: '123' } });
-  assert.deepEqual(input, { consent: true, name: 'Test User', points: { S0: '0', EPOCH_1: '10.25' }, totalPoints: null });
-  assert.equal(researchInput({ consent: true, version: RESEARCH_CONSENT, points: { EPOCH_1: ' 10,25 ' } }).points.EPOCH_1, '10.25');
+test('automatic research works without preferences and rejects invalid manual point metadata', () => {
+  for (const input of [null, undefined, {}, [], { consent: false, version: 'wallet-strategy-research-v1' }]) assert.deepEqual(researchInput(input), { name: '', points: {}, totalPoints: null });
+  const input = researchInput({ name: '  Test   User  ', points: { S0: '0', EPOCH_1: '10.25', EPOCH_2: '-1', bad: '100' }, totalPoints: 'Infinity', report: { volume: '123' } });
+  assert.deepEqual(input, { name: 'Test User', points: { S0: '0', EPOCH_1: '10.25' }, totalPoints: null });
+  assert.equal(researchInput({ points: { EPOCH_1: ' 10,25 ' } }).points.EPOCH_1, '10.25');
 });
 
 test('Arcus research aligns canonical weekly gains and preserves exact fees, rebates, holding and liquidity mix', () => {
@@ -42,6 +42,8 @@ test('Arcus research aligns canonical weekly gains and preserves exact fees, reb
   assert.equal(period.ratios.makerSharePercent, 50);
   assert.equal(period.eligibleForHoldingComparison, true);
   assert.equal(research.profile.walletLink, 'user_supplied_unverified');
+  assert.equal(research.collection.mode, 'automatic');
+  assert.equal(research.consent, undefined);
   assert.equal(period.holding.buckets.reduce((sum, bucket) => sum + Number(bucket.volumeUsd), 0), Number(period.summary.volumeUsd));
   const subaccount = arcusReport(); subaccount.accountScope = 0;
   assert.equal(arcusResearch(subaccount, 'Test User', arcusPoints).periods['s1-week-2'].ratios.volumePerPointUsd, null);
@@ -54,6 +56,8 @@ test('TxFlow keeps zero separate from unknown and never allocates a combined tot
   assert.equal(research.periods.s0.eligibleForPointsComparison, false);
   assert.equal(research.periods['s1-epoch-1'].ratios.volumePerPointUsd, 20);
   assert.equal(research.periods['s1-epoch-1'].summary.realizedPnlUsd, '4');
+  assert.deepEqual(research.periods['s1-epoch-1'].summary.feesByRole.maker, { paidUsd: '0.02', rebatesUsd: '0', netUsd: '0.02' });
+  assert.deepEqual(research.periods['s1-epoch-1'].summary.feesByRole.taker, { paidUsd: '0', rebatesUsd: '0', netUsd: '0' });
   assert.equal(research.periods['s1-epoch-1'].points.distributionAt, '2026-10-20');
   assert.equal(research.periods['s1-epoch-2'].points.value, null);
   assert.equal(research.latestScan.submittedTotalPoints.value, '100');
@@ -92,6 +96,17 @@ test('changed Arcus profile clears previous claimed points; blank and stale prof
   assert.equal(outOfOrder.periods['s1-week-2'].points.value, null);
 });
 
+test('automatic updates preserve historical consent without fabricating new consent', () => {
+  const legacy = arcusResearch(arcusReport(), 'Alice', arcusPoints);
+  delete legacy.collection;
+  legacy.consent = { version: 'wallet-strategy-research-v1', acceptedAt: fetchedAt };
+  const next = arcusReport(); next.fetchedAt = '2026-10-29T12:00:00Z';
+  const merged = mergeResearchWallet(legacy, arcusResearch(next, 'Alice', arcusPoints));
+  assert.deepEqual(merged.consent, legacy.consent);
+  assert.equal(merged.collection.mode, 'automatic');
+  assert.equal(merged.collection.recordedAt, next.fetchedAt);
+});
+
 test('CSV contains separate wallet-period observations, explicit unknowns and spreadsheet-safe names', () => {
   const wallet = arcusResearch(arcusReport(), '=HYPERLINK("bad")', arcusPoints);
   const csv = researchCsv([wallet]);
@@ -99,6 +114,8 @@ test('CSV contains separate wallet-period observations, explicit unknowns and sp
   assert.ok(csv.includes('"comparable"'));
   assert.ok(csv.includes('"points_source"'));
   assert.ok(csv.includes('"under1h_volume_usd"'));
+  assert.ok(csv.includes('"maker_fees_paid_usd"'));
+  assert.ok(csv.includes('"taker_net_fees_usd"'));
   assert.ok(csv.includes("\"'=HYPERLINK"));
   assert.ok(csv.includes('"-0.023456789"'));
   assert.ok(csv.includes('"arcus_snapshot"'));

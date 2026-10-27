@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import TxflowHolding from "@/components/txflow-holding";
+import TxflowExecutionProfile from "@/components/txflow-execution-profile";
 import { parsePoints } from "@/lib/estimator";
 import type { TxflowEpochId, TxWalletReport } from "@/lib/txflow-wallet";
 
@@ -29,6 +30,7 @@ export default function TxflowEpochAnalysis({ report, points, received }: { repo
     <div className="tf-epoch-scorecard"><div><span>Trading volume</span><strong>{money(summary?.volume)}</strong></div><div><span>Epoch points</span><strong>{count === null ? received.includes(selected.id) ? "—" : "Pending" : number.format(count)}</strong></div><div><span>Volume / point</span><strong>{comparable && summary ? money(Number(summary.volume) / count!) : "—"}</strong></div><div><span>Net fees / point</span><strong>{feesComparable && summary ? preciseUsd.format(Number(summary.netFees) / count!) : "—"}</strong></div></div>
     {!comparable && <p className="tf-help">{received.includes(selected.id) ? "Enter this epoch's points above. Ratios need positive points and complete fill history." : "Enter manual points above to calculate ratios, even while distribution is pending."}</p>}
     {comparable && !received.includes(selected.id) && <p className="tf-help">Manual comparison · distribution pending. Ratios use your entered points and trades through this scan's cutoff.</p>}
+    <section className="tf-epoch-execution" aria-label={`Execution breakdown for ${selected.label}`}><h3>Maker &amp; taker · {selected.label}</h3><TxflowExecutionProfile summary={summary} complete={report.fillsScan.status === "complete"} /></section>
     <TxflowHolding analysis={selected.holding} />
     <div className="tf-epoch-markets"><h3>Markets in {selected.label}</h3>{selected.markets.length ? selected.markets.slice(0, 5).map(market => <div key={market.market}><span>{market.market}<small>{market.fills} fills · {money(market.netFees)} net fees</small></span><strong>{money(market.volume)}</strong></div>) : <p className="tf-help">{summary === null ? "Trading history unavailable." : "No executions in this epoch."}</p>}</div>
   </section>;

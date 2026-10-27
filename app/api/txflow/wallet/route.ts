@@ -79,5 +79,5 @@ export async function POST(request: NextRequest) {
       { fillsStatus: fillScan.status, fundingStatus: fundingScan.status, historyStatus: holdingOptions.historyStatus, historyPages: holdingOptions.historyPages }),
     ...groupTxFills(selectedFills) };
   const research = await collectTxflowResearch(report, body.research);
-  return NextResponse.json({ ...report, ...(research ? { research } : {}) }, { headers });
+  return NextResponse.json({ ...report, research }, { headers });
 }

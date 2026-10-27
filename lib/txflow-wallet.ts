@@ -65,7 +65,7 @@ export function parseTxflowWalletSettings(raw: string | null): TxflowWalletSetti
     if (!saved || typeof saved !== "object" || Array.isArray(saved)) return TXFLOW_WALLET_DEFAULTS;
     const points: Record<string, string> = {}, received: Record<string, boolean> = {};
     if (saved.points && typeof saved.points === "object" && !Array.isArray(saved.points)) for (const [key, value] of Object.entries(saved.points).slice(-500)) {
-      if (/^0x[0-9a-f]{40}:(AWARDED|S1|ALLTIME|S0|EPOCH_1|EPOCH_2|24H|7D|30D|90D)$/.test(key) && typeof value === "string" && value.length <= 100) points[key] = value;
+      if (/^0x[0-9a-f]{40}:(S0|EPOCH_1|EPOCH_2|24H|7D|30D|90D)$/.test(key) && typeof value === "string" && value.length <= 100) points[key] = value;
     }
     if (saved.received && typeof saved.received === "object" && !Array.isArray(saved.received)) for (const [key, value] of Object.entries(saved.received).slice(-500)) {
       if (/^0x[0-9a-f]{40}:(S0|EPOCH_1|EPOCH_2)$/.test(key) && typeof value === "boolean") received[key] = value;
@@ -76,7 +76,9 @@ export function parseTxflowWalletSettings(raw: string | null): TxflowWalletSetti
 export type TxFill = { key: string; market: string; instrument: string; side: "BUY" | "SELL"; size: string; startPosition: string | null; sequence: string; marginMode: string; time: number; notional: string; fee: string; feeToken: string; closedPnl: string; role: "Maker" | "Taker" | "Unknown" };
 export type TxFunding = { key: string; time: number; market: string; amount: string };
 export type TxScan<T> = { rows: T[]; pages: number; status: "complete" | "partial" | "unavailable"; warnings: string[] };
-export type TxSummary = { fills: number; volume: string; feesPaid: string; rebates: string; netFees: string; closedPnl: string; makerVolume: string; takerVolume: string; unknownRoleVolume: string; excludedFeeTokens: string[] };
+export type TxRoleFees = { paid: string; rebates: string; net: string };
+export type TxSummary = { fills: number; volume: string; feesPaid: string; rebates: string; netFees: string; closedPnl: string; makerVolume: string; takerVolume: string; unknownRoleVolume: string;
+  feesByRole: Record<"maker" | "taker" | "unknown", TxRoleFees>; excludedFeeTokens: string[] };
 export type TxOverview = { period: string; pnl: string; roe: string; volume: string; maxDrawdown: string | null; equity: string };
 export type TxPosition = { market: string; size: string; entryPrice: string | null; markPrice: string | null; liquidationPrice: string | null; value: string; margin: string; unrealizedPnl: string; leverage: number | null; marginMode: string };
 export type TxAccount = { equity: string; withdrawable: string; marginUsed: string; positionValue: string; time: number | null; positions: TxPosition[] };
@@ -197,14 +199,21 @@ export async function collectTxHistory<T extends { key: string; time: number }>(
 export function summarizeTxFills(fills: TxFill[]): TxSummary {
   let volume = zero, paid = zero, rebates = zero, pnl = zero, maker = zero, taker = zero, unknown = zero;
   const excluded = new Set<string>();
+  const roleFees = { maker: { paid: zero, rebates: zero }, taker: { paid: zero, rebates: zero }, unknown: { paid: zero, rebates: zero } };
   for (const fill of fills) {
     const notional = txAtoms(fill.notional), fee = txAtoms(fill.fee);
     volume += notional; pnl += txAtoms(fill.closedPnl);
-    if (fill.feeToken.toUpperCase() === "USDC") { if (fee >= zero) paid += fee; else rebates -= fee; }
+    const role = fill.role === "Maker" ? "maker" : fill.role === "Taker" ? "taker" : "unknown";
+    if (fill.feeToken.toUpperCase() === "USDC") {
+      if (fee >= zero) { paid += fee; roleFees[role].paid += fee; }
+      else { rebates -= fee; roleFees[role].rebates -= fee; }
+    }
     else if (fee !== zero) excluded.add(fill.feeToken);
     if (fill.role === "Maker") maker += notional; else if (fill.role === "Taker") taker += notional; else unknown += notional;
   }
-  return { fills: fills.length, volume: txUsd(volume), feesPaid: txUsd(paid), rebates: txUsd(rebates), netFees: txUsd(paid - rebates), closedPnl: txUsd(pnl), makerVolume: txUsd(maker), takerVolume: txUsd(taker), unknownRoleVolume: txUsd(unknown), excludedFeeTokens: [...excluded].sort() };
+  const feesFor = (role: keyof typeof roleFees): TxRoleFees => ({ paid: txUsd(roleFees[role].paid), rebates: txUsd(roleFees[role].rebates), net: txUsd(roleFees[role].paid - roleFees[role].rebates) });
+  return { fills: fills.length, volume: txUsd(volume), feesPaid: txUsd(paid), rebates: txUsd(rebates), netFees: txUsd(paid - rebates), closedPnl: txUsd(pnl), makerVolume: txUsd(maker), takerVolume: txUsd(taker), unknownRoleVolume: txUsd(unknown),
+    feesByRole: { maker: feesFor("maker"), taker: feesFor("taker"), unknown: feesFor("unknown") }, excludedFeeTokens: [...excluded].sort() };
 }
 export function summarizeTxFunding(rows: TxFunding[]) {
   let paid = zero, received = zero;

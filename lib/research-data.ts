@@ -3,7 +3,7 @@ import type { WalletReport } from "./wallet-analytics";
 import type { TxWalletReport } from "./txflow-wallet";
 
 export const RESEARCH_VERSION = 1;
-export const RESEARCH_CONSENT = "wallet-strategy-research-v1";
+export const RESEARCH_COLLECTION = "wallet-strategy-research-v2";
 export type ResearchStatus = { status: "saved" | "not_configured" | "failed"; message: string };
 export type ResearchPoints = {
   value: string | null; source: "arcus_snapshot" | "manual"; status: string;
@@ -12,6 +12,7 @@ export type ResearchPoints = {
 export type ResearchSummary = {
   fills: number; volumeUsd: string; feesPaidUsd: string; rebatesUsd: string; netFeesUsd: string;
   makerVolumeUsd: string; takerVolumeUsd: string; unknownRoleVolumeUsd: string; realizedPnlUsd: string | null;
+  feesByRole?: Record<"maker" | "taker" | "unknown", { paidUsd: string; rebatesUsd: string; netUsd: string }> | null;
 };
 export type ResearchPeriod = {
   id: string; label: string; season: string; start: string | null; end: string; observedThrough: string; observedAt: string;
@@ -26,7 +27,9 @@ export type ResearchPeriod = {
 };
 export type ResearchWallet = {
   schemaVersion: number; project: "arcus" | "txflow"; address: string; firstSeenAt: string; updatedAt: string;
-  consent: { version: string; acceptedAt: string };
+  collection: { mode: "automatic"; version: string; recordedAt: string };
+  // Historical opt-in metadata is retained only for records collected before automatic saving.
+  consent?: { version: string; acceptedAt: string };
   profile: { name: string; walletLink: "user_supplied_unverified" } | null;
   latestScan: { fetchedAt: string; from: string | null; to: string; scope: string; complete: boolean; summary: ResearchSummary | null;
     submittedTotalPoints?: { value: string; source: "manual"; attribution: "selected_scan_only" } | null };
@@ -34,10 +37,8 @@ export type ResearchWallet = {
 };
 
 // This is the only client metadata admitted to the dataset. Trading data is built on the server.
-export function researchInput(value: unknown): { consent: true; name: string; points: Record<string, string>; totalPoints: string | null } | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const input = value as Record<string, unknown>;
-  if (input.consent !== true || input.version !== RESEARCH_CONSENT) return null;
+export function researchInput(value: unknown): { name: string; points: Record<string, string>; totalPoints: string | null } {
+  const input = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
   const pointValue = (raw: unknown) => {
     if (typeof raw !== "string" || raw.length > 40) return null;
     const normalized = raw.trim().replace(",", ".");
@@ -53,7 +54,7 @@ export function researchInput(value: unknown): { consent: true; name: string; po
     }
   }
   const totalPoints = pointValue(input.totalPoints);
-  return { consent: true, name: typeof input.name === "string" ? input.name.trim().replace(/\s+/g, " ").slice(0, 100) : "", points, totalPoints };
+  return { name: typeof input.name === "string" ? input.name.trim().replace(/\s+/g, " ").slice(0, 100) : "", points, totalPoints };
 }
 
 function decimalSum(values: string[]) {
@@ -70,8 +71,10 @@ function arcusSummary(summary: NonNullable<WalletReport["summary"]>): ResearchSu
 }
 function txSummary(summary: NonNullable<TxWalletReport["summary"]>): ResearchSummary {
   return { fills: summary.fills, volumeUsd: summary.volume, feesPaidUsd: summary.feesPaid, rebatesUsd: summary.rebates,
-    netFeesUsd: summary.netFees, makerVolumeUsd: summary.makerVolume, takerVolumeUsd: summary.takerVolume, unknownRoleVolumeUsd: summary.unknownRoleVolume, realizedPnlUsd: summary.closedPnl };
+    netFeesUsd: summary.netFees, makerVolumeUsd: summary.makerVolume, takerVolumeUsd: summary.takerVolume, unknownRoleVolumeUsd: summary.unknownRoleVolume, realizedPnlUsd: summary.closedPnl,
+    feesByRole: summary.feesByRole ? { maker: researchFees(summary.feesByRole.maker), taker: researchFees(summary.feesByRole.taker), unknown: researchFees(summary.feesByRole.unknown) } : null };
 }
+function researchFees(fees: { paid: string; rebates: string; net: string }) { return { paidUsd: fees.paid, rebatesUsd: fees.rebates, netUsd: fees.net }; }
 export function withResearchRatios(period: ResearchPeriod): ResearchPeriod {
   const count = Number(period.points.value), summary = period.summary;
   const eligible = period.points.value !== null && count > 0 && Number.isFinite(count) && ["recorded", "manual"].includes(period.points.status)
@@ -85,9 +88,9 @@ export function withResearchRatios(period: ResearchPeriod): ResearchPeriod {
       makerSharePercent: summary && volume > 0 ? finite(Number(summary.makerVolumeUsd) / volume * 100) : null } };
 }
 const emptyRatios: ResearchPeriod["ratios"] = { volumePerPointUsd: null, netFeesPerPointUsd: null, pointsPer10kVolume: null, makerSharePercent: null };
-function baseWallet(project: ResearchWallet["project"], address: string, fetchedAt: string): Pick<ResearchWallet, "schemaVersion" | "project" | "address" | "firstSeenAt" | "updatedAt" | "consent"> {
+function baseWallet(project: ResearchWallet["project"], address: string, fetchedAt: string): Pick<ResearchWallet, "schemaVersion" | "project" | "address" | "firstSeenAt" | "updatedAt" | "collection"> {
   return { schemaVersion: RESEARCH_VERSION, project, address: address.toLowerCase(), firstSeenAt: fetchedAt, updatedAt: fetchedAt,
-    consent: { version: RESEARCH_CONSENT, acceptedAt: fetchedAt } };
+    collection: { mode: "automatic", version: RESEARCH_COLLECTION, recordedAt: fetchedAt } };
 }
 
 export function arcusResearch(report: WalletReport, name: string, points: PointWeek[]): ResearchWallet {

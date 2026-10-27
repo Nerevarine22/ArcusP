@@ -67,12 +67,27 @@ test('epoch reports reconcile individually and a later close never rewrites earl
   assert.equal(buildTxEpochReports([],[],['EPOCH_2'],today,scan)[0].completed,false);
 });
 
+test('each epoch keeps its own maker, taker and unknown fees, including rebates', () => {
+  const fills = [
+    { ...fill(start + 3600000), role:'Maker', fee:'0.1' },
+    { ...fill(start + 7200000), role:'Taker', fee:'0.2' },
+    { ...fill(split + 3600000), role:'Maker', fee:'-0.03' },
+    { ...fill(split + 7200000), role:'Unknown', fee:'0.04' },
+  ];
+  const [one, two] = buildTxEpochReports(fills,[],['EPOCH_1','EPOCH_2'],afterDistribution,scan);
+  assert.deepEqual(one.summary.feesByRole, { maker:{paid:'0.1',rebates:'0',net:'0.1'}, taker:{paid:'0.2',rebates:'0',net:'0.2'}, unknown:{paid:'0',rebates:'0',net:'0'} });
+  assert.deepEqual(two.summary.feesByRole, { maker:{paid:'0',rebates:'0.03',net:'-0.03'}, taker:{paid:'0',rebates:'0',net:'0'}, unknown:{paid:'0.04',rebates:'0',net:'0.04'} });
+  assert.equal(one.summary.netFees,'0.3'); assert.equal(two.summary.netFees,'0.01');
+  assert.equal(one.summary.makerVolume,'100'); assert.equal(one.summary.takerVolume,'100');
+  assert.equal(two.summary.makerVolume,'100'); assert.equal(two.summary.unknownRoleVolume,'100');
+});
+
 test('wallet settings migrate old saved inputs and retain distinct per-wallet epoch values and receipt confirmations', () => {
   const address = '0x4c4e9818925a5bdaf5f50944ffbe9d297e58563b';
   const legacy = parseTxflowWalletSettings(JSON.stringify({address,period:'EPOCH_1',points:{[`${address}:EPOCH_1`]:'46'}}));
   assert.equal(legacy.points[`${address}:EPOCH_1`],'46'); assert.deepEqual(legacy.received,{});
   const saved = parseTxflowWalletSettings(JSON.stringify({...legacy,period:'S1',points:{...legacy.points,[`${address}:EPOCH_2`]:'21',[`${address}:AWARDED`]:'67'},received:{[`${address}:EPOCH_2`]:true,bad:true}}));
-  assert.equal(saved.period,'S1'); assert.equal(saved.points[`${address}:EPOCH_2`],'21'); assert.equal(saved.points[`${address}:AWARDED`],'67');
+  assert.equal(saved.period,'S1'); assert.equal(saved.points[`${address}:EPOCH_2`],'21'); assert.equal(saved.points[`${address}:AWARDED`],undefined);
   assert.deepEqual(saved.received,{[`${address}:EPOCH_2`]:true});
   assert.equal(parseTxflowWalletSettings('invalid').period,'AWARDED');
 });

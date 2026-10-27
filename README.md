@@ -2,7 +2,7 @@
 
 ## Wallet research collection
 
-Arcus and TxFlow wallet analyses can optionally contribute to a private Neon PostgreSQL dataset.
+Arcus and TxFlow wallet analyses are automatically saved to a private Neon PostgreSQL dataset.
 One record per exchange/wallet contains separate weekly/epoch observations, point provenance,
 trading metrics, holding mix and completeness flags. Repeat scans merge without duplicating wallets.
 Set private `DATABASE_URL`, run `npm run research:init`, and redeploy. Export with
@@ -173,13 +173,15 @@ Points are entered at the top beside the wallet and analysis scope. Three main v
 
 - **Awarded epochs only** (default): enter each included epoch's points separately;
   the total is summed automatically once all fields are valid, including zero.
-  Until then, a combined total can be entered manually. Editing an epoch clears
-  the old manual total; per-epoch inputs are shared across analysis modes. Only confirmed
+  There is no separate combined-total input or fallback; missing epoch points keep
+  the combined ratio unknown. Per-epoch inputs are shared across analysis modes. Only confirmed
   received distributions contribute executions, fees and funding. Gaps between
   selected epochs are excluded, while fills within gaps may establish FIFO context.
 - **Season 1 / individual epoch**: enter each epoch's points separately. Both S1
   epochs appear as selectable analysis cards with their own volume, fees, ratios,
-  markets and holding profile. Pending distributions retain trading statistics.
+  markets, holding profile, maker/taker volumes, paid fees, rebates and net fees by role.
+  Pending distributions retain trading statistics. Unknown execution roles stay separate;
+  fee amounts include USDC only and reconcile to each epoch's supported fee total.
 - **All available history**: all indexed activity, including ongoing or unawarded
   periods. Ratios are calculated per matching epoch, not against an incomplete total.
 
@@ -190,11 +192,11 @@ Epoch 1 was distributed on 20 October. For the requested local preview, S0 and E
 are marked distributed on 27 October and included by default. Scans still stop
 at the actual current time; future executions are never invented. Dates alone never mark unconfigured distributions received. Users confirm **Points received** after
 actual distribution; the control is enabled after the snapshot window ends.
-Confirmation is stored per address. Changing receipts clears the combined total
-and report so a stale total cannot silently be reused for a different scope.
+Confirmation is stored per address. Changing receipts clears the report and the
+combined point value is recalculated from the newly selected epoch inputs.
 
 Existing saved wallet, period and epoch point values migrate without loss.
-Epoch points are saved separately from the combined awarded total. Zero is a valid
+Epoch points remain saved; obsolete manual awarded totals are discarded during migration. Zero is a valid
 point value but cannot produce a per-point ratio. Missing points remain unknown.
 Manual epoch ratios require complete selected fills and positive entered points.
 Inputs remain enabled before distribution, including S0 and Epoch 2. Pending

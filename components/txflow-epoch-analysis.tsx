@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import TxflowHolding from "@/components/txflow-holding";
 import TxflowExecutionProfile from "@/components/txflow-execution-profile";
 import { parsePoints } from "@/lib/estimator";
@@ -11,10 +10,9 @@ const preciseUsd = new Intl.NumberFormat("en-US", { style: "currency", currency:
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const money = (value: string | number | null | undefined) => value == null ? "—" : usd.format(Number(value));
 
-export default function TxflowEpochAnalysis({ report, points, received }: { report: TxWalletReport; points: Record<string, string>; received: TxflowEpochId[] }) {
-  const [selectedId, setSelectedId] = useState<TxflowEpochId | null>(null);
+export default function TxflowEpochAnalysis({ report, points, received, selectedId, onSelect }: { report: TxWalletReport; points: Record<string, string>; received: TxflowEpochId[]; selectedId: TxflowEpochId; onSelect: (id: TxflowEpochId) => void }) {
   const epochs = report.epochs ?? [];
-  const selected = epochs.find(epoch => epoch.id === selectedId) ?? [...epochs].reverse().find(epoch => received.includes(epoch.id)) ?? epochs[0];
+  const selected = epochs.find(epoch => epoch.id === selectedId);
   if (!selected) return null;
   const valueFor = (id: TxflowEpochId) => parsePoints(points[`${report.address}:${id}`] ?? "");
   const count = valueFor(selected.id), summary = selected.summary;
@@ -24,7 +22,7 @@ export default function TxflowEpochAnalysis({ report, points, received }: { repo
     <div className="tf-wallet-section-title"><div><span className="tf-eyebrow">EPOCH COMPARISON / MATCHED ACTIVITY</span><h2 id="tf-epochs-heading">Epoch analysis</h2></div></div><p className="tf-help">Choose an epoch to see its volume, fees, points and holding profile. Points entered above stay attached to that epoch.</p>
     <div className="tf-epoch-cards" role="group" aria-label="Select an epoch">{epochs.map(epoch => {
       const count = valueFor(epoch.id), awarded = received.includes(epoch.id);
-      return <button type="button" className="tf-epoch-card" key={epoch.id} aria-label={`Analyze ${epoch.label}`} aria-pressed={selected.id === epoch.id} onClick={() => setSelectedId(epoch.id)}><span className="tf-epoch-card-top"><b>{epoch.label}</b><small>{awarded ? "Points received" : count !== null ? "Manual points" : "Points pending"}</small></span><span className="tf-epoch-card-dates">{epoch.dates}</span><strong>{count === null ? awarded ? "Enter points" : "Pending" : `${number.format(count)} PTS`}</strong><span>Volume <b>{money(epoch.summary?.volume)}</b></span><span>Net fees <b>{money(epoch.summary?.netFees)}</b></span></button>;
+      return <button type="button" className="tf-epoch-card" key={epoch.id} aria-label={`Analyze ${epoch.label}`} aria-pressed={selected.id === epoch.id} onClick={() => onSelect(epoch.id)}><span className="tf-epoch-card-top"><b>{epoch.label}</b><small>{awarded ? "Points received" : count !== null ? "Manual points" : "Points pending"}</small></span><span className="tf-epoch-card-dates">{epoch.dates}</span><strong>{count === null ? awarded ? "Enter points" : "Pending" : `${number.format(count)} PTS`}</strong><span>Volume <b>{money(epoch.summary?.volume)}</b></span><span>Net fees <b>{money(epoch.summary?.netFees)}</b></span></button>;
     })}</div>
     <div className="tf-epoch-selected-heading"><div><span className="tf-eyebrow">SELECTED EPOCH</span><h3>{selected.label}</h3><p className="tf-help">{selected.dates} · UTC · {selected.completed ? "Snapshot window complete" : "Snapshot window in progress"}</p></div><span className="tf-readonly">{summary?.fills ?? "—"} FILLS</span></div>
     <div className="tf-epoch-scorecard"><div><span>Trading volume</span><strong>{money(summary?.volume)}</strong></div><div><span>Epoch points</span><strong>{count === null ? received.includes(selected.id) ? "—" : "Pending" : number.format(count)}</strong></div><div><span>Volume / point</span><strong>{comparable && summary ? money(Number(summary.volume) / count!) : "—"}</strong></div><div><span>Net fees / point</span><strong>{feesComparable && summary ? preciseUsd.format(Number(summary.netFees) / count!) : "—"}</strong></div></div>

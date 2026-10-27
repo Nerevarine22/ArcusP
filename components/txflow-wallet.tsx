@@ -25,6 +25,7 @@ export default function TxflowWallet({ initialTheme }: { initialTheme: "light" |
   const [settings, update, ready] = useTxflowWallet();
   const { address, period } = settings;
   const [storedReport, setReport] = useState<TxWalletReport | null>(null);
+  const [selectedEpochId, setSelectedEpochId] = useState<TxflowEpochId | null>(null);
   const [loading, setLoading] = useState(false), [error, setError] = useState("");
   const controller = useRef<AbortController | null>(null);
   const normalizedAddress = address.trim().toLowerCase();
@@ -33,6 +34,8 @@ export default function TxflowWallet({ initialTheme }: { initialTheme: "light" |
   const received = txflowReceivedEpochs(settings, normalizedAddress, now);
   const receiptKey = received.join(",");
   const report = storedReport?.address === normalizedAddress && storedReport.period === period && (period !== "AWARDED" || storedReport.awardedEpochs?.join(",") === receiptKey) ? storedReport : null;
+  const epochs = report?.epochs ?? [];
+  const selectedEpoch = epochs.find(epoch => epoch.id === selectedEpochId) ?? [...epochs].reverse().find(epoch => received.includes(epoch.id)) ?? epochs[0] ?? null;
   const epochIds: TxflowEpochId[] = period === "AWARDED" ? received : period === "S1" ? ["EPOCH_1", "EPOCH_2"] : Object.hasOwn(TXFLOW_EPOCHS, period) ? [period as TxflowEpochId] : [];
   const pointsInput = settings.points[`${normalizedAddress}:${period}`] ?? "";
   const epochPoints = epochIds.map(id => parsePoints(settings.points[`${normalizedAddress}:${id}`] ?? ""));
@@ -51,7 +54,7 @@ export default function TxflowWallet({ initialTheme }: { initialTheme: "light" |
     if (ready && recentReport?.address === normalizedAddress && recentReport.period === period && recentReport.epochs && !storedReport) setReport(recentReport);
   }, [ready, normalizedAddress, period, storedReport]);
 
-  function reset() { controller.current?.abort(); setLoading(false); setError(""); setReport(null); recentReport = null; }
+  function reset() { controller.current?.abort(); setLoading(false); setError(""); setReport(null); setSelectedEpochId(null); recentReport = null; }
   async function analyze(event: FormEvent) {
     event.preventDefault(); reset();
     if (!/^0x[0-9a-f]{40}$/.test(normalizedAddress)) { setError("Enter a valid 0x wallet address with 40 hexadecimal characters."); return; }
@@ -73,6 +76,14 @@ export default function TxflowWallet({ initialTheme }: { initialTheme: "light" |
   const volumeRatio = report?.fillsScan.status === "complete" && summary && pointsValid ? Number(summary.volume) / points : null;
   const feeRatio = fullFees && summary && pointsValid ? Number(summary.netFees) / points : null;
   const feeBps = summary && Number(summary.volume) > 0 && summary.excludedFeeTokens.length === 0 ? Number(summary.netFees) / Number(summary.volume) * 10_000 : null;
+  // Epoch cards control both detail panels; an unavailable epoch never falls back to whole-period totals.
+  const detailSummary = selectedEpoch ? selectedEpoch.summary : summary ?? null;
+  const detailPoints = selectedEpoch ? parsePoints(settings.points[`${report!.address}:${selectedEpoch.id}`] ?? "") : points;
+  const detailPending = selectedEpoch ? !received.includes(selectedEpoch.id) && detailPoints === null : pointsPending;
+  const detailPointsValid = selectedEpoch ? detailPoints !== null && detailPoints > 0 : pointsValid;
+  const detailVolumeRatio = report?.fillsScan.status === "complete" && detailSummary && detailPointsValid ? Number(detailSummary.volume) / detailPoints! : null;
+  const detailFeeRatio = report?.fillsScan.status === "complete" && detailSummary?.excludedFeeTokens.length === 0 && detailPointsValid ? Number(detailSummary.netFees) / detailPoints! : null;
+  const detailPointsLabel = selectedEpoch ? `${selectedEpoch.label} points` : pointsLabel;
   const activeDays = report?.days.slice(-14) ?? [], peakDay = Math.max(1, ...activeDays.map(day => Number(day.volume)));
   const warnings = report ? [...report.warnings, ...report.fillsScan.warnings.map(warning => `Fills: ${warning}`), ...report.fundingScan.warnings.map(warning => `Funding: ${warning}`)] : [];
 
@@ -115,14 +126,14 @@ export default function TxflowWallet({ initialTheme }: { initialTheme: "light" |
         </section>
         <p className="tf-wallet-scope-note">{report.windows.map((window, index) => <span key={index}>{index > 0 && " + "}{window.from ? dateFormat.format(new Date(window.from)) : "All indexed history"} → {dateFormat.format(new Date(Date.parse(window.to) - (window.endExclusive ? 1 : 0)))} UTC</span>)} · All monetary values in USDC. {report.fillsScan.status !== "complete" && "Fill totals cover only successfully read rows."}</p>
 
-        {report.epochs.length > 0 ? <TxflowEpochAnalysis key={`epochs:${report.fetchedAt}`} report={report} points={settings.points} received={received} /> : <TxflowHolding analysis={report.holding} />}
+        {selectedEpoch ? <TxflowEpochAnalysis report={report} points={settings.points} received={received} selectedId={selectedEpoch.id} onSelect={setSelectedEpochId} /> : <TxflowHolding analysis={report.holding} />}
 
         <div className="tf-wallet-analysis-grid">
           <section className="tf-wallet-card tf-panel" aria-labelledby="tf-liquidity-heading"><div className="tf-wallet-section-title"><div><span className="tf-eyebrow">EXECUTION PROFILE</span><h2 id="tf-liquidity-heading">How you trade</h2></div></div>
-            <p className="tf-help">Whole selected period · {TXFLOW_PERIODS[report.period]}</p><TxflowExecutionProfile summary={summary ?? null} complete={report.fillsScan.status === "complete"} />
+            <p className="tf-help">{selectedEpoch ? `Selected epoch · ${selectedEpoch.label} · ${selectedEpoch.dates}` : `Whole selected period · ${TXFLOW_PERIODS[report.period]}`}</p><TxflowExecutionProfile summary={detailSummary} complete={report.fillsScan.status === "complete"} />
           </section>
-          <section className="tf-wallet-card tf-panel" aria-labelledby="tf-points-comparison-heading"><div className="tf-wallet-section-title"><div><span className="tf-eyebrow">{pointsPending ? "DISTRIBUTION PENDING" : "MATCHED PERIOD / POINTS EFFICIENCY"}</span><h2 id="tf-points-comparison-heading">Your trades → your points</h2></div></div><div className="tf-earned-points"><span>{pointsLabel}</span><strong>{pointsPending ? "Pending" : points !== null ? numberFormat.format(points) : "—"}{!pointsPending && <small>PTS</small>}</strong></div>
-            <div className="tf-wallet-ratios"><div><span>Volume / point</span><strong>{money(volumeRatio)}</strong></div><div><span>Net fill fees / point</span><strong>{feeRatio === null ? "—" : pointCostFormat.format(feeRatio)}</strong></div></div><p className="tf-help">{period === "ALLTIME" ? "All history includes unawarded and ongoing activity. Use separate epoch comparisons above for matching point ratios." : pointsPending ? "Enter points for every selected epoch to calculate combined ratios. Pending distributions accept manual values too." : <>Based on your manual points and trades through the scan cutoff. {!pointsValid ? "Enter positive points above to see your ratios. " : ""}Ratios require complete fill history and describe past activity, not an official points formula.</>}</p>
+          <section className="tf-wallet-card tf-panel" aria-labelledby="tf-points-comparison-heading"><div className="tf-wallet-section-title"><div><span className="tf-eyebrow">{detailPending ? "DISTRIBUTION PENDING" : "MATCHED PERIOD / POINTS EFFICIENCY"}</span><h2 id="tf-points-comparison-heading">Your trades → your points</h2></div></div><div className="tf-earned-points"><span>{detailPointsLabel}</span><strong>{detailPending ? "Pending" : detailPoints !== null ? numberFormat.format(detailPoints) : "—"}{!detailPending && <small>PTS</small>}</strong></div>
+            <div className="tf-wallet-ratios"><div><span>Volume / point</span><strong>{money(detailVolumeRatio)}</strong></div><div><span>Net fill fees / point</span><strong>{detailFeeRatio === null ? "—" : pointCostFormat.format(detailFeeRatio)}</strong></div></div><p className="tf-help">{detailPending ? "Enter points for this epoch above to calculate its ratios." : <>Based on your manual points and trades {selectedEpoch ? `in ${selectedEpoch.label}` : "through the scan cutoff"}. {!detailPointsValid ? "Enter positive points above to see your ratios. " : ""}Ratios require complete fill history and describe past activity, not an official points formula.</>}</p>
           </section>
         </div>
 

@@ -19,7 +19,7 @@ The summary shows USD value, XTEN quantity, pool share and value per point; the
 FDV table updates the same calculation. Settings persist separately under
 `extended-estimate-v1`, preserving Arcus and TxFlow settings.
 The table appears above Polymarket and uses its thresholds through $1B:
-**$150M, $300M, $500M, $800M, $1B**. The FDV preset buttons use the same values.
+**$150M, $250M, $300M, $500M, $800M, $1B**. The FDV preset buttons use the same values.
 Manual values remain editable without adding rows outside this fixed grid.
 
 Polymarket FDV is loaded through the server-only Heisenberg integration at

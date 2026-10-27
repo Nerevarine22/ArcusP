@@ -1,7 +1,7 @@
 export const EXTENDED_SUPPLY = 1_000_000_000;
 export const EXTENDED_COMMUNITY_TOKENS = 300_000_000;
 export const EXTENDED_ALLOCATION = EXTENDED_COMMUNITY_TOKENS / EXTENDED_SUPPLY * 100;
-export const EXTENDED_FDV_PRESETS = [150_000_000, 300_000_000, 500_000_000, 800_000_000, 1_000_000_000];
+export const EXTENDED_FDV_PRESETS = [150_000_000, 250_000_000, 300_000_000, 500_000_000, 800_000_000, 1_000_000_000];
 export const EXTENDED_POINTS_SOURCE = "https://docs.extended.exchange/extended-resources/points-program";
 
 export type ExtendedSettings = {

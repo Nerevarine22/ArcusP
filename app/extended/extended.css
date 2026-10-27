@@ -64,7 +64,7 @@
 .ex-help a { color:#b2c7bc; text-decoration:underline; text-underline-offset:3px; }
 .ex-page .ex-error { color:#f2a890; font-size:11px; line-height:1.6; margin-top:9px; }
 .ex-fdv-field { border-top:1px solid var(--ex-line); padding-top:24px; }
-.ex-presets { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:5px; margin-bottom:10px; }
+.ex-presets { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; margin-bottom:10px; }
 .ex-presets button { min-height:33px; border:1px solid #2d3931; border-radius:4px; color:#a3b4aa; background:#172019; padding:5px 1px; font-size:9px; }
 .ex-presets button[aria-pressed=true] { background:var(--ex-accent); color:#031a10; border-color:var(--ex-accent); }
 .ex-presets button:hover { border-color:var(--ex-accent); }
@@ -144,7 +144,8 @@
 .ex-table .ex-active-row { background:#00bc840d; }
 .ex-table .ex-active-row th button,.ex-table .ex-active-row td:last-child { color:var(--ex-accent); }
 .ex-table .ex-active-row th button>i { background:var(--ex-accent); }
-.ex-table tbody tr:hover { background:#142119; }
+.ex-table tbody tr { cursor:pointer; }
+.ex-table tbody tr:hover,.ex-table tbody tr:focus-within { background:#142119; }
 .ex-table tbody tr:last-child th,.ex-table tbody tr:last-child td { border-bottom:0; }
 .ex-matrix-footer { display:flex; gap:8px; align-items:center; margin:0 -23px; padding:16px 23px; font-size:9px; color:#7f9c8a; border-top:1px solid var(--ex-line); background:#0b120d; line-height:1.6; }
 .ex-selected-indicator { display:inline-block; width:5px; height:5px; border-radius:50%; background:var(--ex-accent); flex-shrink:0; }

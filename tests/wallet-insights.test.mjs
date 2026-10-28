@@ -12,10 +12,10 @@ const points = { week: 3, distributed_at: week.end, status: 'recorded', earned_p
 
 test('saved distributions give separate weekly gains that sum to the cumulative total', async () => {
   const points = await readWeeklyPoints('  WITTY   PHOENIX ');
-  assert.deepEqual(points.map(row => row.earned_points), [2.98, 12.78, 18.15]);
-  assert.equal(points.reduce((sum, row) => sum + Math.round(row.earned_points * 100), 0), 3391);
-  assert.equal(points[2].distributed_at, '2026-10-21T19:00:00Z');
-  assert.notEqual(points[2].downloaded_at, points[2].distributed_at);
+  assert.deepEqual(points.map(row => row.earned_points), [2.98, 12.78, 18.15, 18.09]);
+  assert.equal(points.reduce((sum, row) => sum + Math.round(row.earned_points * 100), 0), 5200);
+  assert.equal(points[3].distributed_at, '2026-10-28T19:00:00Z');
+  assert.notEqual(points[3].downloaded_at, points[3].distributed_at);
 });
 
 test('missing or hidden history never becomes zero or a multiweek gain', () => {

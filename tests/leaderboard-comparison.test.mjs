@@ -5,12 +5,12 @@ import { getPointsComparison, readLeaderboard, readPreviousLeaderboard } from '.
 const entry = (points, name = 'Test User') => ({ rank: 1, name, tier: 'Silver', points });
 const snapshot = (points) => ({ season: 'Season 1', points_visible: true, total: 1, updated_at: '2026-10-09T11:13:42Z', entries: [entry(points)], by_name: { 'test user': 0 } });
 
-test('compares the 22 October Witty Phoenix entry with the 15 October snapshot', async () => {
+test('compares the 28 October Witty Phoenix entry with the 22 October snapshot', async () => {
   const [current, previous] = await Promise.all([readLeaderboard(), readPreviousLeaderboard()]);
   const result = getPointsComparison(previous, current.entries[current.by_name['witty phoenix']]);
-  assert.equal(current.entries[current.by_name['witty phoenix']].points, 33.91);
-  assert.equal(result.previous_points, 15.76);
-  assert.equal(Number(result.change_percent.toFixed(2)), 115.16);
+  assert.equal(current.entries[current.by_name['witty phoenix']].points, 52);
+  assert.equal(result.previous_points, 33.91);
+  assert.equal(Number(result.change_percent.toFixed(2)), 53.35);
 });
 
 test('reports growth, decline, unchanged points, and loss to zero', () => {

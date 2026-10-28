@@ -36,4 +36,13 @@ export const projects: Project[] = [
     href: "/extended",
     website: "https://app.extended.exchange/",
   },
+  {
+    id: "variational",
+    name: "Variational",
+    status: "available",
+    description: "Estimate point value using FDV scenarios and Polymarket probabilities.",
+    tools: ["Points calculator"],
+    href: "/variational",
+    website: "https://omni.variational.io/?ref=OMNIATOMS",
+  },
 ];

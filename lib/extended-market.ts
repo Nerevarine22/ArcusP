@@ -2,6 +2,8 @@ export const EXTENDED_EVENT_SLUG = "extended-fdv-above-one-day-after-launch";
 export const EXTENDED_MARKET_URL = `https://polymarket.com/event/${EXTENDED_EVENT_SLUG}`;
 export const EXTENDED_MARKET_TITLE = "Extended FDV above ___ one day after launch?";
 export const MAX_QUOTE_AGE_MS = 24 * 60 * 60 * 1000;
+export type FdvEvent = { slug: string; project: string; title: string; url: string };
+const extendedEvent: FdvEvent = { slug: EXTENDED_EVENT_SLUG, project: "Extended", title: EXTENDED_MARKET_TITLE, url: EXTENDED_MARKET_URL };
 
 export type ExtendedThreshold = {
   thresholdUsd: number; question: string; marketUrl: string;
@@ -32,24 +34,24 @@ export function heisenbergPage(value: unknown) {
   if (!Array.isArray(data.results) || data.results.length > 200 || typeof pagination.has_more !== "boolean") throw new Error("Unexpected market response.");
   return { rows: data.results as unknown[], hasMore: pagination.has_more };
 }
-export function normalizeExtendedMarkets(values: unknown[]): Market[] {
+export function normalizeExtendedMarkets(values: unknown[], event: FdvEvent = extendedEvent): Market[] {
   const markets: Market[] = [], seen = new Set<number>();
   for (const value of values) {
     const row = object(value);
     // Never admit other events from a broad or malformed search response.
-    if (row.event_slug !== EXTENDED_EVENT_SLUG || row.closed !== false) continue;
+    if (row.event_slug !== event.slug || row.closed !== false) continue;
     const question = String(row.question ?? ""), match = question.match(/\$\s*([\d,]+(?:\.\d+)?)\s*(billion|million|bn|m|b)\b/i);
-    if (!match || !/extended\s+fdv\s+above/i.test(question)) throw new Error("Unrecognized Extended FDV threshold.");
+    if (!match || !question.toLowerCase().replace(/\s+/g, " ").includes(`${event.project.toLowerCase()} fdv above`)) throw new Error("Unrecognized FDV threshold.");
     const thresholdUsd = Number(match[1].replaceAll(",", "")) * (/^(b|bn|billion)$/i.test(match[2]) ? 1e9 : 1e6);
     const yesToken = String(String(row.side_a_outcome).toLowerCase() === "yes" ? row.side_a_token_id
       : String(row.side_b_outcome).toLowerCase() === "yes" ? row.side_b_token_id : "");
     if (!Number.isFinite(thresholdUsd) || thresholdUsd <= 0 || seen.has(thresholdUsd)
       || !/^\d{1,100}$/.test(yesToken) || !/^0x[\da-f]{64}$/i.test(String(row.condition_id))
-      || !/^[a-z0-9-]+$/.test(String(row.slug))) throw new Error("Invalid or duplicate Extended market.");
+      || !/^[a-z0-9-]+$/.test(String(row.slug))) throw new Error("Invalid or duplicate FDV market.");
     seen.add(thresholdUsd);
     markets.push({ thresholdUsd, question, slug: String(row.slug), conditionId: String(row.condition_id), yesToken });
   }
-  if (markets.length > 20) throw new Error("Too many Extended thresholds.");
+  if (markets.length > 20) throw new Error("Too many FDV thresholds.");
   return markets.sort((a, b) => a.thresholdUsd - b.thresholdUsd);
 }
 function probability(value: unknown): number | null {
@@ -97,21 +99,21 @@ export function inferFdvMedian(thresholds: Pick<ExtendedThreshold, "thresholdUsd
   return { kind: "unavailable", reason: "A 50% crossing could not be identified." };
 }
 
-export function emptyExtendedMarket(status: "unavailable" | "not_configured", message: string, now = Date.now()): ExtendedMarketSnapshot {
-  return { status, provider: "Heisenberg", marketTitle: EXTENDED_MARKET_TITLE, marketUrl: EXTENDED_MARKET_URL,
+export function emptyExtendedMarket(status: "unavailable" | "not_configured", message: string, now = Date.now(), event: FdvEvent = extendedEvent): ExtendedMarketSnapshot {
+  return { status, provider: "Heisenberg", marketTitle: event.title, marketUrl: event.url,
     fetchedAt: new Date(now).toISOString(), quoteAsOf: null, thresholds: [], median: { kind: "unavailable", reason: message }, warnings: [], message };
 }
 
-export async function loadExtendedMarket(query: HeisenbergQuery, now = Date.now()): Promise<ExtendedMarketSnapshot> {
+export async function loadExtendedMarket(query: HeisenbergQuery, now = Date.now(), event: FdvEvent = extendedEvent): Promise<ExtendedMarketSnapshot> {
   const raw: unknown[] = [];
   for (let offset = 0; ; offset += 200) {
-    const page = heisenbergPage(await query(574, { event_slug: EXTENDED_EVENT_SLUG, closed: "False" }, { limit: 200, offset }));
+    const page = heisenbergPage(await query(574, { event_slug: event.slug, closed: "False" }, { limit: 200, offset }));
     raw.push(...page.rows);
     if (!page.hasMore) break;
     if (offset >= 400 || page.rows.length === 0) throw new Error("Market pagination could not complete.");
   }
-  const markets = normalizeExtendedMarkets(raw);
-  if (!markets.length) return emptyExtendedMarket("unavailable", "No open markets were found for this Extended event.", now);
+  const markets = normalizeExtendedMarkets(raw, event);
+  if (!markets.length) return emptyExtendedMarket("unavailable", `No open markets were found for this ${event.project} event.`, now, event);
   const thresholds: ExtendedThreshold[] = [], warnings: string[] = [];
   // At most 168 hourly candles in seven days. Sparse markets can have no 1m rows.
   const end = Math.floor(now / 1000), params = { interval: "1h", start_time: String(end - 7 * 86400), end_time: String(end) };
@@ -126,13 +128,13 @@ export async function loadExtendedMarket(query: HeisenbergQuery, now = Date.now(
       const market = markets[offset + index];
       const quote = result.status === "fulfilled" ? result.value : { yesProbability: null, lastKnownProbability: null, quoteAsOf: null, priceMethod: null, state: "unavailable" as const };
       if (quote.state !== "available") warnings.push(`${market.question} ${quote.state === "stale" ? "Its latest quote is over 24 hours old." : "A recent quote is unavailable."}`);
-      thresholds.push({ thresholdUsd: market.thresholdUsd, question: market.question, marketUrl: `${EXTENDED_MARKET_URL}/${market.slug}`, ...quote });
+      thresholds.push({ thresholdUsd: market.thresholdUsd, question: market.question, marketUrl: `${event.url}/${market.slug}`, ...quote });
     });
   }
   const available = thresholds.filter(row => row.state === "available");
   const median = inferFdvMedian(thresholds);
   return { status: available.length === thresholds.length ? "ready" : available.length ? "partial" : "unavailable", provider: "Heisenberg",
-    marketTitle: EXTENDED_MARKET_TITLE, marketUrl: EXTENDED_MARKET_URL, fetchedAt: new Date(now).toISOString(),
+    marketTitle: event.title, marketUrl: event.url, fetchedAt: new Date(now).toISOString(),
     quoteAsOf: available.length ? available.map(row => row.quoteAsOf!).sort()[0] : null, thresholds, median, warnings,
     message: available.length ? null : "No quotes from the last 24 hours are available. Manual FDV remains available." };
 }

@@ -13,6 +13,7 @@ function Arrow({ diagonal = false }: { diagonal?: boolean }) {
 }
 
 function ProjectArtwork({ id }: { id: string }) {
+  if (id === "variational") return <div className="hub-cover-art" aria-hidden="true"><svg viewBox="0 0 380 240" fill="none">{[0, 1, 2, 3, 4].map(index => <path key={index} d={`M${-60 + index * 27} 270Q${60 + index * 27} -30 ${180 + index * 27} 90T${420 + index * 27} 170`} stroke="currentColor" />)}</svg><img src="/brand/variational/symbol.svg" alt="" width="200" height="200" /></div>;
   if (!["arcus", "txflow", "extended"].includes(id)) return null;
   return <div className="hub-cover-art" aria-hidden="true">
     {id === "arcus" ? <><svg viewBox="0 0 380 240" fill="none">{[0, 1, 2, 3, 4, 5].map(index => <path key={index} d={`M${90 + index * 27} 270V154c0-95 77-172 172-172h150`} stroke="currentColor" strokeWidth="1" />)}</svg><img src="/brand/arcus-symbol.svg" alt="" width="200" height="200" /></>
@@ -44,7 +45,7 @@ export default async function Page() {
         <div className="hub-list-heading"><h2 id="projects-heading">Choose your exchange</h2><span>YOUR NEXT PERSPECTIVE <Arrow /></span></div>
         <div className="hub-project-grid">{projects.map((project, index) => {
           const live = project.status === "available" && project.href;
-          const wordmark = project.id === "arcus" ? "/brand/arcus-logo-cream.svg" : project.id === "txflow" ? "/brand/txflow/logo.svg" : project.id === "extended" ? "/brand/extended/logo.svg" : null;
+          const wordmark = project.id === "arcus" ? "/brand/arcus-logo-cream.svg" : project.id === "txflow" ? "/brand/txflow/logo.svg" : project.id === "extended" ? "/brand/extended/logo.svg" : project.id === "variational" ? "/brand/variational/logo.svg" : null;
           return <article className={`hub-project hub-project-${project.id}`} key={project.id} aria-labelledby={`hub-project-${project.id}`} style={{ animationDelay: `${index * 70}ms` }}>
             <div className="hub-project-cover">
               <ProjectArtwork id={project.id} />

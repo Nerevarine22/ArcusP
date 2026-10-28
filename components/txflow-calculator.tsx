@@ -33,8 +33,8 @@ export default function TxflowCalculator({ initialTheme }: { initialTheme: "ligh
 
       <main>
         <section className="tf-intro" aria-labelledby="tf-title">
-          <div><p className="tf-eyebrow">[ TXFLOW / COMMUNITY TOOLS ]</p><h1 id="tf-title">Your points.<br /><span>The possibilities.</span></h1></div>
-          <div className="tf-intro-note"><span className="tf-status"><i aria-hidden="true" />POINTS SIMULATION</span><p>Set your assumptions.<br />Explore what your points could be worth.</p></div>
+          <div><p className="tf-eyebrow">[ TXFLOW / COMMUNITY TOOLS ]</p><h1 id="tf-title">What could your TxFlow<br /><span>points be worth?</span></h1></div>
+          <div className="tf-intro-note"><span className="tf-status"><i aria-hidden="true" />POINTS SIMULATION</span><p>Estimate point value using<br />FDV, allocation, and total points.</p></div>
         </section>
 
         <section className="tf-summary" aria-labelledby="tf-summary-title">
@@ -55,12 +55,12 @@ export default function TxflowCalculator({ initialTheme }: { initialTheme: "ligh
               </dl>
             </div>
           </div>
-          <div className="tf-summary-footer"><span className="tf-model-message">{result ? "Your scenario is ready. Compare the matrix below." : pointsError || totalError ? "Check the highlighted inputs below." : validTotal ? "Enter your points below to calculate your allocation." : "Enter your points and total pool below to get started."}</span><span>[ {poolLabel.toUpperCase()} POOL / HYPOTHETICAL SCENARIO ]</span></div>
+          <div className="tf-summary-footer"><span className="tf-model-message">{result ? "Compare estimates in the table below." : pointsError || totalError ? "Check the highlighted inputs below." : validTotal ? "Enter your points below to calculate your allocation." : "Enter your points and total pool below to get started."}</span><span>[ {poolLabel.toUpperCase()} POOL / HYPOTHETICAL SCENARIO ]</span></div>
         </section>
 
         <div className="tf-workspace">
           <section className="tf-settings tf-panel" aria-labelledby="tf-settings-title">
-            <div className="tf-panel-heading"><span className="tf-eyebrow">02 / PARAMETERS</span><h2 id="tf-settings-title">Build your scenario</h2><p>Your points. Your assumptions.</p></div>
+            <div className="tf-panel-heading"><span className="tf-eyebrow">02 / PARAMETERS</span><h2 id="tf-settings-title">Calculation settings</h2><p>Enter your points and calculation assumptions.</p></div>
             <div className="tf-input-group">
               <label htmlFor="tf-points">Your points<span>PTS</span></label>
               <input id="tf-points" className="tf-points-input" inputMode="decimal" autoComplete="off" maxLength={100} value={pointsInput} onChange={event => update({ pointsInput: event.target.value, perPoint: false })} aria-invalid={Boolean(pointsError)} aria-describedby={pointsError ? "tf-points-error" : undefined} />
@@ -91,13 +91,13 @@ export default function TxflowCalculator({ initialTheme }: { initialTheme: "ligh
 
           <div className="tf-analysis">
             <section className="tf-pool-strip tf-panel" aria-label="Your share of the points pool">
-              <div><span className="tf-eyebrow">YOUR SLICE OF THE POOL</span><p>{result ? `${number.format(points!)} of ${number.format(total!)} total points` : "Add your points and pool to see your share"}</p></div><strong>{share}</strong>
+              <div><span className="tf-eyebrow">YOUR SHARE OF THE POINTS POOL</span><p>{result ? `${number.format(points!)} of ${number.format(total!)} total points` : "Add your points and pool to see your share"}</p></div><strong>{share}</strong>
               <div className="tf-pool-track" role="progressbar" aria-label="Share of total points" aria-valuemin={0} aria-valuemax={100} {...(result ? { "aria-valuenow": result.poolShare } : { "aria-valuetext": "Enter points and pool to calculate" })}><span style={{ width: `${result?.poolShare ?? 0}%` }} /></div>
             </section>
 
             <section className="tf-matrix tf-panel" aria-labelledby="tf-matrix-title">
               <div className="tf-matrix-heading"><div><span className="tf-eyebrow">03 / COMPARE OUTCOMES</span><h2 id="tf-matrix-title">Scenario matrix</h2></div><div className="tf-view-toggle" role="group" aria-label="Matrix display"><button type="button" aria-pressed={perPoint} onClick={() => update({ perPoint: true })}>Per point</button><button type="button" aria-pressed={!perPoint} onClick={() => update({ perPoint: false })}>My points</button></div></div>
-              <p className="tf-matrix-description"><b>{poolLabel} pool{validTotal ? ` · ${number.format(total)} PTS` : ""}</b><br />{perPoint ? "Implied value of one point" : points !== null && !pointsError ? `${number.format(points)} PTS · your estimated allocation` : "Enter your points to see your estimated allocation"} <span>· Select a cell to explore</span></p>
+              <p className="tf-matrix-description"><b>{poolLabel} pool{validTotal ? ` · ${number.format(total)} PTS` : ""}</b><br />{perPoint ? "Implied value of one point" : points !== null && !pointsError ? `${number.format(points)} PTS · your estimated allocation` : "Enter your points to see your estimated allocation"} <span>· Select a cell to update the estimate</span></p>
               <p className="tf-table-hint">Swipe to view all scenarios →</p>
               <div className="tf-table-wrap" data-lenis-prevent-horizontal><table className="tf-table"><caption className="sr-only">{perPoint ? "Estimated value per point" : "Estimated value of your points"} by token FDV and airdrop allocation</caption><thead><tr><th scope="col">TOKEN FDV</th>{ALLOCATION_PRESETS.map(value => <th key={value} scope="col"><b>{value}%</b><span>ALLOCATION</span></th>)}</tr></thead><tbody>{FDV_PRESETS.map(row => <tr key={row}><th scope="row">{fdvLabel(row)}</th>{ALLOCATION_PRESETS.map(column => {
                 const cell = validTotal ? estimate(row, column, total, perPoint ? 0 : (points ?? -1)) : null;
@@ -107,7 +107,7 @@ export default function TxflowCalculator({ initialTheme }: { initialTheme: "ligh
               })}</tr>)}</tbody></table></div>
               <div className="tf-matrix-footer"><span className="tf-selected-dot" aria-hidden="true" />Selected: {fdvLabel(fdv)} FDV · {allocation}% allocation{validTotal && <> · {number.format(total)} total PTS</>}</div>
             </section>
-            <section className="tf-method" aria-labelledby="tf-method-title"><span aria-hidden="true">↳</span><div><h2 id="tf-method-title">The math, made clear.</h2><p>Estimated value = FDV × airdrop allocation × (your points ÷ total points pool).</p><p>Basic (45.6M) and Bullish (52.1M) use the approximate pools from the reference image. Values are calculated at full precision and rounded to two decimals for display.</p><p>FDV, allocation, and pools are scenario assumptions, not an official TxFlow conversion formula. Token launch and airdrop are not guaranteed.</p></div></section>
+            <section className="tf-method" aria-labelledby="tf-method-title"><span aria-hidden="true">↳</span><div><h2 id="tf-method-title">Calculation method</h2><p>Estimated value = FDV × airdrop allocation × (your points ÷ total points pool).</p><p>Basic (45.6M) and Bullish (52.1M) use the approximate pools from the reference image. Values are calculated at full precision and rounded to two decimals for display.</p><p>FDV, allocation, and pools are scenario assumptions, not an official TxFlow conversion formula. Token launch and airdrop are not guaranteed.</p></div></section>
           </div>
         </div>
       </main>

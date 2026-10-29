@@ -13,6 +13,8 @@ function Arrow({ diagonal = false }: { diagonal?: boolean }) {
 }
 
 function ProjectArtwork({ id }: { id: string }) {
+  if (id === "bulk") return <div className="hub-cover-art" aria-hidden="true"><svg viewBox="0 0 380 240" fill="none">{[0, 1, 2, 3].map(index => <circle key={index} cx="280" cy="110" r={65 + index * 28} stroke="currentColor" strokeWidth=".7" />)}</svg><img src="/brand/bulk/symbol.svg" alt="" width="200" height="200" /></div>;
+  if (id === "entropy") return <div className="hub-cover-art" aria-hidden="true"><svg viewBox="0 0 380 240" fill="none">{[0,1,2,3,4,5,6].map(index=><path key={index} d={`M${index*45-30} 0v240M0 ${index*45-30}h380`} stroke="currentColor" strokeWidth=".5" />)}</svg><img src="/brand/entropy/symbol.svg" alt="" width="200" height="160" /></div>;
   if (id === "variational") return <div className="hub-cover-art" aria-hidden="true"><svg viewBox="0 0 380 240" fill="none">{[0, 1, 2, 3, 4].map(index => <path key={index} d={`M${-60 + index * 27} 270Q${60 + index * 27} -30 ${180 + index * 27} 90T${420 + index * 27} 170`} stroke="currentColor" />)}</svg><img src="/brand/variational/symbol.svg" alt="" width="200" height="200" /></div>;
   if (!["arcus", "txflow", "extended"].includes(id)) return null;
   return <div className="hub-cover-art" aria-hidden="true">
@@ -45,16 +47,16 @@ export default async function Page() {
         <div className="hub-list-heading"><h2 id="projects-heading">Choose your exchange</h2><span>YOUR NEXT PERSPECTIVE <Arrow /></span></div>
         <div className="hub-project-grid">{projects.map((project, index) => {
           const live = project.status === "available" && project.href;
-          const wordmark = project.id === "arcus" ? "/brand/arcus-logo-cream.svg" : project.id === "txflow" ? "/brand/txflow/logo.svg" : project.id === "extended" ? "/brand/extended/logo.svg" : project.id === "variational" ? "/brand/variational/logo.svg" : null;
+          const wordmark = project.id === "arcus" ? "/brand/arcus-logo-cream.svg" : project.id === "txflow" ? "/brand/txflow/logo.svg" : project.id === "extended" ? "/brand/extended/logo.svg" : project.id === "variational" ? "/brand/variational/logo.svg" : project.id === "bulk" ? "/brand/bulk/logo.svg" : null;
           return <article className={`hub-project hub-project-${project.id}`} key={project.id} aria-labelledby={`hub-project-${project.id}`} style={{ animationDelay: `${index * 70}ms` }}>
             <div className="hub-project-cover">
               <ProjectArtwork id={project.id} />
               <div className="hub-project-top"><span>{String(index + 1).padStart(2, "0")} / {project.name.toUpperCase()}</span><span className="hub-project-status"><i aria-hidden="true" />{live ? "Live" : "Soon"}</span></div>
-              <h3 id={`hub-project-${project.id}`}><span className="sr-only">{project.name}</span>{wordmark ? <img src={wordmark} alt="" width="180" height="48" /> : project.name}</h3>
+              <h3 id={`hub-project-${project.id}`}>{wordmark ? <><span className="sr-only">{project.name}</span><img src={wordmark} alt="" width="180" height="48" /></> : project.name}</h3>
               {live && <Link className="hub-cover-link" href={project.href!} aria-label={`Open ${project.name} tools`}><span className="hub-cover-arrow"><Arrow diagonal /></span></Link>}
             </div>
             <div className="hub-project-body">
-              <ul className="hub-tool-links" aria-label={`${project.name} tools`}>{project.tools.map((tool, toolIndex) => <li key={tool}>{live ? <Link href={toolIndex === 1 ? `${project.href}/wallet` : project.href!} aria-label={`${project.name} ${tool}`}><span className="hub-tool-symbol"><ToolIcon wallet={toolIndex === 1} /></span><span>{tool}</span><Arrow /></Link> : <span className="hub-tool-pending">{tool}</span>}</li>)}</ul>
+              <ul className="hub-tool-links" aria-label={`${project.name} tools`}>{project.tools.map(tool => <li key={tool}>{live ? <Link href={tool === "Wallet analytics" ? project.walletHref ?? `${project.href}/wallet` : project.href!} aria-label={`${project.name} ${tool}`}><span className="hub-tool-symbol"><ToolIcon wallet={tool === "Wallet analytics"} /></span><span>{tool}</span><Arrow /></Link> : <span className="hub-tool-pending">{tool}</span>}</li>)}</ul>
               <a className="hub-external" href={project.website} target="_blank" rel="noopener noreferrer" aria-label={`Visit ${project.name} exchange (opens in a new tab)`}><span>Visit exchange</span><Arrow diagonal /></a>
             </div>
           </article>;

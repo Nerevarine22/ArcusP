@@ -6,6 +6,7 @@ export type Project = {
   tools: string[];
   href: string | null;
   website: string;
+  walletHref?: string;
 };
 
 export const projects: Project[] = [
@@ -44,5 +45,24 @@ export const projects: Project[] = [
     tools: ["Points calculator"],
     href: "/variational",
     website: "https://omni.variational.io/?ref=OMNIATOMS",
+  },
+  {
+    id: "entropy",
+    name: "Entropy",
+    status: "available",
+    description: "Analyze io: trading volume, execution fees, funding and holding times using public Hyperliquid data.",
+    tools: ["Wallet analytics"],
+    href: "/entropy",
+    walletHref: "/entropy",
+    website: "https://pro.entropy.io/?r=quasartitan452",
+  },
+  {
+    id: "bulk",
+    name: "BULK",
+    status: "available",
+    description: "Estimate AURA value across FDV and total points scenarios using a manual community allocation.",
+    tools: ["Points calculator", "Wallet analytics"],
+    href: "/bulk",
+    website: "https://app.bulk.trade/",
   },
 ];

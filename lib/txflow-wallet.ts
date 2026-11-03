@@ -1,39 +1,41 @@
 import type { ResearchStatus } from "./research-data";
 
-// S0 and Epoch 2 are marked distributed for the requested local preview.
+// Distribution dates use UTC; trading windows are half-open.
 export const TXFLOW_EPOCHS = {
   S0: { label: "Season 0", start: null, end: "2026-10-12T00:00:00.000Z", dates: "Before 12 October 2026", distribution: "2026-10-27", distributed: true },
   EPOCH_1: { label: "S1 · Epoch 1", start: "2026-10-12T00:00:00.000Z", end: "2026-10-20T00:00:00.000Z", dates: "12–19 October 2026", distribution: "2026-10-20", distributed: true },
   EPOCH_2: { label: "S1 · Epoch 2", start: "2026-10-20T00:00:00.000Z", end: "2026-10-27T00:00:00.000Z", dates: "20–26 October 2026", distribution: "2026-10-27", distributed: true },
+  EPOCH_3: { label: "S1 · Epoch 3", start: "2026-10-27T00:00:00.000Z", end: "2026-11-03T00:00:00.000Z", dates: "27 October – 2 November 2026", distribution: "2026-11-03", distributed: true },
 };
-export const TXFLOW_PERIODS = { AWARDED: "Awarded epochs only", S1: "Season 1 · Epochs 1 & 2", S0: "S0 · Before 12 Oct 2026", EPOCH_1: "S1 · Epoch 1 · 12–19 Oct", EPOCH_2: "S1 · Epoch 2 · 20–26 Oct", ALLTIME: "All available history", "24H": "Last 24 hours", "7D": "Last 7 days", "30D": "Last 30 days", "90D": "Last 90 days" };
+export const TXFLOW_PERIODS = { AWARDED: "Awarded epochs only", S1: "Season 1 · Epochs 1–3", S0: "S0 · Before 12 Oct 2026", EPOCH_1: "S1 · Epoch 1 · 12–19 Oct", EPOCH_2: "S1 · Epoch 2 · 20–26 Oct", EPOCH_3: "S1 · Epoch 3 · 27 Oct–2 Nov", ALLTIME: "All available history", "24H": "Last 24 hours", "7D": "Last 7 days", "30D": "Last 30 days", "90D": "Last 90 days" };
 export type TxflowEpochId = keyof typeof TXFLOW_EPOCHS;
 export type TxflowPeriod = keyof typeof TXFLOW_PERIODS;
 export type TxflowWindow = { from: number | null; to: number; endExclusive: boolean };
-export const txflowPointsStatus = (period: TxflowPeriod, received: TxflowEpochId[] = []): "pending" | "manual" => (period === "S0" || period === "EPOCH_2") && !TXFLOW_EPOCHS[period].distributed && !received.includes(period) ? "pending" : "manual";
-export const txflowDefaultAwarded = (): TxflowEpochId[] => (Object.keys(TXFLOW_EPOCHS) as TxflowEpochId[]).filter(id => TXFLOW_EPOCHS[id].distributed);
+export const txflowPointsStatus = (period: TxflowPeriod, received: TxflowEpochId[] = []): "pending" | "manual" => Object.hasOwn(TXFLOW_EPOCHS, period) && !TXFLOW_EPOCHS[period as TxflowEpochId].distributed && !received.includes(period as TxflowEpochId) ? "pending" : "manual";
+export const txflowEpochDistributed = (id: TxflowEpochId, now: number) => TXFLOW_EPOCHS[id].distributed && Date.parse(`${TXFLOW_EPOCHS[id].distribution}T00:00:00Z`) <= now;
+export const txflowDefaultAwarded = (now = Date.now()): TxflowEpochId[] => (Object.keys(TXFLOW_EPOCHS) as TxflowEpochId[]).filter(id => txflowEpochDistributed(id, now));
 export function txflowEpochRange(id: TxflowEpochId, now: number): TxflowWindow {
   const epoch = TXFLOW_EPOCHS[id], from = epoch.start === null ? null : Date.parse(epoch.start), end = Date.parse(epoch.end);
   if (from !== null && now <= from) throw new Error("This points epoch has not started yet.");
   return { from, to: Math.min(end, now), endExclusive: now >= end };
 }
 export function txflowAwardedEpochs(value: unknown, now: number): TxflowEpochId[] {
-  const values = value === undefined ? txflowDefaultAwarded() : value;
-  if (!Array.isArray(values) || !values.length || values.length > 3 || values.some(id => typeof id !== "string" || !Object.hasOwn(TXFLOW_EPOCHS, id)) || new Set(values).size !== values.length) throw new Error("Choose at least one valid awarded epoch.");
+  const values = value === undefined ? txflowDefaultAwarded(now) : value;
+  if (!Array.isArray(values) || !values.length || values.length > Object.keys(TXFLOW_EPOCHS).length || values.some(id => typeof id !== "string" || !Object.hasOwn(TXFLOW_EPOCHS, id)) || new Set(values).size !== values.length) throw new Error("Choose at least one valid awarded epoch.");
   const ids = values as TxflowEpochId[];
   for (const id of ids) {
     const epoch = TXFLOW_EPOCHS[id];
     if (epoch.start !== null && Date.parse(epoch.start) >= now) throw new Error("This points epoch has not started yet.");
-    if (!epoch.distributed && Date.parse(epoch.end) > now) throw new Error("An awarded epoch must have a completed snapshot window.");
+    if (!txflowEpochDistributed(id, now) && Date.parse(epoch.end) > now) throw new Error("An awarded epoch must have a completed snapshot window.");
   }
   return (Object.keys(TXFLOW_EPOCHS) as TxflowEpochId[]).filter(id => ids.includes(id));
 }
 export function txflowEpochIds(period: TxflowPeriod, awarded: TxflowEpochId[], now: number): TxflowEpochId[] {
-  const ids = period === "AWARDED" ? awarded : period === "S1" ? ["EPOCH_1", "EPOCH_2"] as TxflowEpochId[]
+  const ids = period === "AWARDED" ? awarded : period === "S1" ? (Object.keys(TXFLOW_EPOCHS) as TxflowEpochId[]).filter(id => id !== "S0")
     : Object.hasOwn(TXFLOW_EPOCHS, period) ? [period as TxflowEpochId] : period === "ALLTIME" ? Object.keys(TXFLOW_EPOCHS) as TxflowEpochId[] : [];
   return ids.filter(id => TXFLOW_EPOCHS[id].start === null || Date.parse(TXFLOW_EPOCHS[id].start!) < now);
 }
-export function txflowPeriodRange(period: TxflowPeriod, now: number, awarded = txflowDefaultAwarded()): TxflowWindow {
+export function txflowPeriodRange(period: TxflowPeriod, now: number, awarded = txflowDefaultAwarded(now)): TxflowWindow {
   if (Object.hasOwn(TXFLOW_EPOCHS, period)) return txflowEpochRange(period as TxflowEpochId, now);
   if (period === "S1" || period === "AWARDED") {
     const ids = period === "AWARDED" ? txflowAwardedEpochs(awarded, now) : txflowEpochIds(period, awarded, now);
@@ -46,7 +48,7 @@ export function txflowPeriodRange(period: TxflowPeriod, now: number, awarded = t
   const days = { "24H": 1, "7D": 7, "30D": 30, "90D": 90 };
   return { from: period === "ALLTIME" ? null : now - days[period as keyof typeof days] * 86_400_000, to: now, endExclusive: false };
 }
-export function txflowSelectionWindows(period: TxflowPeriod, now: number, awarded = txflowDefaultAwarded()): TxflowWindow[] {
+export function txflowSelectionWindows(period: TxflowPeriod, now: number, awarded = txflowDefaultAwarded(now)): TxflowWindow[] {
   return period === "AWARDED" ? txflowAwardedEpochs(awarded, now).map(id => txflowEpochRange(id, now)) : [txflowPeriodRange(period, now, awarded)];
 }
 export const txflowInWindows = (time: number, windows: TxflowWindow[]) => windows.some(window => (window.from === null || time >= window.from) && (window.endExclusive ? time < window.to : time <= window.to));
@@ -55,7 +57,7 @@ export function txflowReceivedEpochs(settings: TxflowWalletSettings, address: st
   return (Object.keys(TXFLOW_EPOCHS) as TxflowEpochId[]).filter(id => {
     const epoch = TXFLOW_EPOCHS[id];
     if (epoch.start !== null && Date.parse(epoch.start) >= now) return false;
-    return epoch.distributed || (Date.parse(epoch.end) <= now && settings.received[`${address}:${id}`] === true);
+    return txflowEpochDistributed(id, now) || (Date.parse(epoch.end) <= now && settings.received[`${address}:${id}`] === true);
   });
 }
 export const TXFLOW_WALLET_DEFAULTS: TxflowWalletSettings = { address: "", period: "AWARDED", points: {}, received: {} };
@@ -65,10 +67,10 @@ export function parseTxflowWalletSettings(raw: string | null): TxflowWalletSetti
     if (!saved || typeof saved !== "object" || Array.isArray(saved)) return TXFLOW_WALLET_DEFAULTS;
     const points: Record<string, string> = {}, received: Record<string, boolean> = {};
     if (saved.points && typeof saved.points === "object" && !Array.isArray(saved.points)) for (const [key, value] of Object.entries(saved.points).slice(-500)) {
-      if (/^0x[0-9a-f]{40}:(S0|EPOCH_1|EPOCH_2|24H|7D|30D|90D)$/.test(key) && typeof value === "string" && value.length <= 100) points[key] = value;
+      if (/^0x[0-9a-f]{40}:(S0|EPOCH_1|EPOCH_2|EPOCH_3|24H|7D|30D|90D)$/.test(key) && typeof value === "string" && value.length <= 100) points[key] = value;
     }
     if (saved.received && typeof saved.received === "object" && !Array.isArray(saved.received)) for (const [key, value] of Object.entries(saved.received).slice(-500)) {
-      if (/^0x[0-9a-f]{40}:(S0|EPOCH_1|EPOCH_2)$/.test(key) && typeof value === "boolean") received[key] = value;
+      if (/^0x[0-9a-f]{40}:(S0|EPOCH_1|EPOCH_2|EPOCH_3)$/.test(key) && typeof value === "boolean") received[key] = value;
     }
     return { address: typeof saved.address === "string" ? saved.address.slice(0, 42) : "", period: typeof saved.period === "string" && Object.hasOwn(TXFLOW_PERIODS, saved.period) ? saved.period : "AWARDED", points, received };
   } catch { return TXFLOW_WALLET_DEFAULTS; }

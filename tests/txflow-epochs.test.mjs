@@ -18,15 +18,15 @@ test('explicit epoch boundaries include the entire final day without overlap or 
   assert.equal(txflowInWindows(end,[two]),false);
 });
 
-test('local S0 and Epoch 2 previews count as distributed without changing scan cutoffs', () => {
+test('awarded defaults follow distribution dates without changing epoch boundaries', () => {
   assert.equal(txflowPointsStatus('S0'),'manual');
   assert.equal(txflowPointsStatus('S0',['S0','EPOCH_1']),'manual');
   assert.equal(txflowPointsStatus('EPOCH_2',['EPOCH_1','EPOCH_2']),'manual');
   assert.equal(txflowPointsStatus('EPOCH_2'),'manual');
-  assert.deepEqual(txflowAwardedEpochs(undefined,today),['S0','EPOCH_1','EPOCH_2']);
+  assert.deepEqual(txflowAwardedEpochs(undefined,today),['EPOCH_1']);
   const address = '0x4c4e9818925a5bdaf5f50944ffbe9d297e58563b';
-  assert.deepEqual(txflowReceivedEpochs({received:{[`${address}:S0`]:false,[`${address}:EPOCH_2`]:false}},address,today),['S0','EPOCH_1','EPOCH_2']);
-  assert.equal(txflowPeriodRange('AWARDED',today).to,today);
+  assert.deepEqual(txflowReceivedEpochs({received:{[`${address}:S0`]:false,[`${address}:EPOCH_2`]:false}},address,today),['EPOCH_1']);
+  assert.equal(txflowPeriodRange('AWARDED',today).to,split);
   assert.deepEqual(txflowAwardedEpochs(undefined,afterDistribution),['S0','EPOCH_1','EPOCH_2']);
   assert.throws(() => txflowAwardedEpochs(['EPOCH_2'],split),/not started/);
   assert.deepEqual(txflowAwardedEpochs(['EPOCH_2','S0','EPOCH_1'],afterDistribution),['S0','EPOCH_1','EPOCH_2']);
@@ -90,4 +90,24 @@ test('wallet settings migrate old saved inputs and retain distinct per-wallet ep
   assert.equal(saved.period,'S1'); assert.equal(saved.points[`${address}:EPOCH_2`],'21'); assert.equal(saved.points[`${address}:AWARDED`],undefined);
   assert.deepEqual(saved.received,{[`${address}:EPOCH_2`]:true});
   assert.equal(parseTxflowWalletSettings('invalid').period,'AWARDED');
+});
+
+test('Epoch 3 enters awarded totals on 3 November and excludes subsequent trading', () => {
+  const distributed=at('2026-11-03T12:00:00Z'), cutoff=at('2026-11-03T00:00:00Z');
+  const address='0x4c4e9818925a5bdaf5f50944ffbe9d297e58563b';
+  const ids=['S0','EPOCH_1','EPOCH_2','EPOCH_3'];
+  assert.deepEqual(txflowAwardedEpochs(undefined,distributed),ids);
+  assert.deepEqual(txflowReceivedEpochs({received:{}},address,distributed),ids);
+  assert.deepEqual(txflowAwardedEpochs(undefined,cutoff-1),ids.slice(0,3));
+  assert.deepEqual(txflowAwardedEpochs([...ids].reverse(),distributed),ids);
+  assert.deepEqual(txflowEpochIds('S1',ids,distributed),ids.slice(1));
+  const range=txflowPeriodRange('EPOCH_3',distributed);
+  assert.equal(range.from,end);assert.equal(range.to,cutoff);assert.equal(range.endExclusive,true);
+  const fills=[fill(end-1),fill(end),fill(cutoff-1),fill(cutoff)];
+  const windows=txflowSelectionWindows('AWARDED',distributed);
+  assert.equal(summarizeTxFills(fills.filter(row=>txflowInWindows(row.time,windows))).fills,3);
+  const [third]=buildTxEpochReports(fills,[],['EPOCH_3'],distributed,scan);
+  assert.equal(third.summary.volume,'200');assert.equal(third.completed,true);
+  const saved=parseTxflowWalletSettings(JSON.stringify({address,period:'EPOCH_3',points:{[`${address}:EPOCH_1`]:'10',[`${address}:EPOCH_3`]:'30'},received:{[`${address}:EPOCH_3`]:true}}));
+  assert.equal(saved.period,'EPOCH_3');assert.equal(saved.points[`${address}:EPOCH_3`],'30');assert.equal(saved.points[`${address}:EPOCH_1`],'10');
 });

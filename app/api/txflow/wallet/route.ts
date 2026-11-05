@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { collectTxflowResearch } from "@/lib/research-collection";
 import { parse } from "lossless-json";
 import { featureFlags } from "@/lib/features";
-import { TXFLOW_PERIODS, analyzeTxHolding, buildTxEpochReports, collectTxHistory, groupTxFills, normalizeTxAccount, normalizeTxFill, normalizeTxFunding, normalizeTxOverview, summarizeTxFills, summarizeTxFunding, txRecord, txflowAwardedEpochs, txflowEpochIds, txflowInWindows, txflowPeriodRange, txflowSelectionWindows, txflowPointsStatus, type TxflowEpochId, type TxflowPeriod, type TxflowWindow, type TxWalletReport, type TxScan, type TxFill, type TxHoldingAnalysis } from "@/lib/txflow-wallet";
+import { TXFLOW_PERIODS, analyzeTxHolding, buildTxEpochReport, buildTxEpochReports, collectTxHistory, groupTxFills, normalizeTxAccount, normalizeTxFill, normalizeTxFunding, normalizeTxOverview, summarizeTxFills, summarizeTxFunding, txRecord, txflowAwardedEpochs, txflowCurrentEpoch, txflowEpochIds, txflowInWindows, txflowPeriodRange, txflowSelectionWindows, txflowPointsStatus, type TxflowEpochId, type TxflowPeriod, type TxflowWindow, type TxWalletReport, type TxScan, type TxFill, type TxHoldingAnalysis } from "@/lib/txflow-wallet";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,8 +26,9 @@ export async function POST(request: NextRequest) {
     windows = txflowSelectionWindows(period, now, awardedEpochs);
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid epoch period." }, { status: 400, headers }); }
   const { from } = range;
+  const currentEpoch = period === "AWARDED" ? txflowCurrentEpoch(now) : null;
   // RPC bounds are inclusive; completed epochs exclude the next day's midnight.
-  const to = range.endExclusive ? range.to - 1 : range.to;
+  const to = currentEpoch?.range.to ?? (range.endExclusive ? range.to - 1 : range.to);
   const signal = AbortSignal.any([request.signal, AbortSignal.timeout(50_000)]);
   async function read(payload: Record<string, unknown>): Promise<unknown> {
     try {
@@ -71,12 +72,14 @@ export async function POST(request: NextRequest) {
     holding.notes = ["Holding-time reconstruction could not be reconciled. Trading volume and fee totals are still available."];
   }
   if (priorScan.status !== "complete") holding.notes.push(...priorScan.warnings.map(warning => `Earlier fills: ${warning}`));
+  const history = [...priorScan.rows, ...fillScan.rows];
+  const epochScan = { fillsStatus: fillScan.status, fundingStatus: fundingScan.status, historyStatus: holdingOptions.historyStatus, historyPages: holdingOptions.historyPages };
   const report: TxWalletReport = { address, period, pointsStatus: txflowPointsStatus(period, awardedEpochs), fetchedAt: new Date(now).toISOString(), range: { from: from === null ? null : new Date(from).toISOString(), to: new Date(range.to).toISOString(), endExclusive: range.endExclusive },
     fillsScan: { status: fillScan.status, pages: fillScan.pages, warnings: fillScan.warnings }, fundingScan: { status: fundingScan.status, pages: fundingScan.pages, warnings: fundingScan.warnings },
     summary, funding: fundingScan.status === "unavailable" ? null : summarizeTxFunding(selectedFunding), overview: overviewResult.data, account: accountResult.data, warnings, holding,
     awardedEpochs, windows: windows.map(window => ({ from: window.from === null ? null : new Date(window.from).toISOString(), to: new Date(window.to).toISOString(), endExclusive: window.endExclusive })),
-    epochs: buildTxEpochReports([...priorScan.rows, ...fillScan.rows], fundingScan.rows, txflowEpochIds(period, awardedEpochs, now), now,
-      { fillsStatus: fillScan.status, fundingStatus: fundingScan.status, historyStatus: holdingOptions.historyStatus, historyPages: holdingOptions.historyPages }),
+    epochs: buildTxEpochReports(history, fundingScan.rows, txflowEpochIds(period, awardedEpochs, now), now, epochScan),
+    ...(currentEpoch ? { currentEpoch: buildTxEpochReport(history, fundingScan.rows, currentEpoch, epochScan) } : {}),
     ...groupTxFills(selectedFills) };
   const research = await collectTxflowResearch(report, body.research);
   return NextResponse.json({ ...report, research }, { headers });

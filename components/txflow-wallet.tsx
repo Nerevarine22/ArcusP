@@ -9,7 +9,7 @@ import TxflowExecutionProfile from "@/components/txflow-execution-profile";
 import { useTxflowWallet } from "@/hooks/use-txflow-wallet";
 import ResearchStorageStatus from "@/components/research-storage-status";
 import { parsePoints, sumPointInputs } from "@/lib/estimator";
-import { TXFLOW_EPOCHS, TXFLOW_PERIODS, txflowReceivedEpochs, txflowEpochIds, type TxflowEpochId, type TxflowPeriod, type TxWalletReport } from "@/lib/txflow-wallet";
+import { TXFLOW_EPOCHS, TXFLOW_PERIODS, txflowReceivedEpochs, txflowEpochIds, type TxflowEpochId, type TxflowReportEpochId, type TxflowPeriod, type TxWalletReport } from "@/lib/txflow-wallet";
 
 const moneyFormat = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 const pointCostFormat = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 6 });
@@ -25,7 +25,7 @@ export default function TxflowWallet({ initialTheme }: { initialTheme: "light" |
   const [settings, update, ready] = useTxflowWallet();
   const { address, period } = settings;
   const [storedReport, setReport] = useState<TxWalletReport | null>(null);
-  const [selectedEpochId, setSelectedEpochId] = useState<TxflowEpochId | null>(null);
+  const [selectedEpochId, setSelectedEpochId] = useState<TxflowReportEpochId | null>(null);
   const [loading, setLoading] = useState(false), [error, setError] = useState("");
   const controller = useRef<AbortController | null>(null);
   const normalizedAddress = address.trim().toLowerCase();
@@ -35,7 +35,9 @@ export default function TxflowWallet({ initialTheme }: { initialTheme: "light" |
   const receiptKey = received.join(",");
   const report = storedReport?.address === normalizedAddress && storedReport.period === period && (period !== "AWARDED" || storedReport.awardedEpochs?.join(",") === receiptKey) ? storedReport : null;
   const epochs = report?.epochs ?? [];
-  const selectedEpoch = epochs.find(epoch => epoch.id === selectedEpochId) ?? [...epochs].reverse().find(epoch => received.includes(epoch.id)) ?? epochs[0] ?? null;
+  const selectedEpoch = (report?.currentEpoch?.id === selectedEpochId ? report.currentEpoch : null)
+    ?? epochs.find(epoch => epoch.id === selectedEpochId) ?? [...epochs].reverse().find(epoch => received.includes(epoch.id)) ?? epochs[0] ?? null;
+  const currentEpochSelected = selectedEpoch !== null && selectedEpoch === report?.currentEpoch;
   const epochIds: TxflowEpochId[] = period === "ALLTIME" ? [] : txflowEpochIds(period,received,now);
   const pointsInput = settings.points[`${normalizedAddress}:${period}`] ?? "";
   const epochPoints = epochIds.map(id => parsePoints(settings.points[`${normalizedAddress}:${id}`] ?? ""));
@@ -44,7 +46,7 @@ export default function TxflowWallet({ initialTheme }: { initialTheme: "light" |
   const pointsPending = epochIds.some((id, index) => !received.includes(id) && epochPoints[index] === null);
   const pointsLabel = period === "AWARDED" ? "Total points for included epochs" : period === "S1" ? "Season 1 points · included epochs" : period === "ALLTIME" ? "Compare points by epoch above" : "Points for this trade period";
   const pointsValid = points !== null && points > 0 && period !== "ALLTIME" && !pointsPending;
-  const note = period === "AWARDED" ? { title: "Only epochs with received points", text: `${received.map(id => TXFLOW_EPOCHS[id].label).join(" + ") || "No distributions selected"}. Unawarded activity is excluded. Confirm new distributions only after you receive the points.` }
+  const note = period === "AWARDED" ? { title: "Awarded epochs and current activity", text: `Totals cover ${received.map(id => TXFLOW_EPOCHS[id].label).join(" + ") || "the selected distributions"}. The current epoch appears separately with trading activity and pending points.` }
     : period === "S1" ? { title: "Season 1 · separate epoch comparisons", text: "Epoch 1: 12–19 October. Epoch 2: 20–26 October. Epoch 3: 27 October–2 November. Enter points for each epoch separately. Ratios use trades available through the scan cutoff." }
     : period === "ALLTIME" ? { title: "All available trading history", text: "Includes activity before, during and after the listed epochs, even when points are pending. Per-point comparisons use matching epoch trades below." }
     : epochIds.length ? { title: `${TXFLOW_EPOCHS[epochIds[0]].label} · ${TXFLOW_EPOCHS[epochIds[0]].dates}`, text: "Epoch boundaries use UTC, including the entire final calendar day. Manual points can be entered before distribution; ratios use the available trading history." }
@@ -78,8 +80,8 @@ export default function TxflowWallet({ initialTheme }: { initialTheme: "light" |
   const feeBps = summary && Number(summary.volume) > 0 && summary.excludedFeeTokens.length === 0 ? Number(summary.netFees) / Number(summary.volume) * 10_000 : null;
   // Epoch cards control both detail panels; an unavailable epoch never falls back to whole-period totals.
   const detailSummary = selectedEpoch ? selectedEpoch.summary : summary ?? null;
-  const detailPoints = selectedEpoch ? parsePoints(settings.points[`${report!.address}:${selectedEpoch.id}`] ?? "") : points;
-  const detailPending = selectedEpoch ? !received.includes(selectedEpoch.id) && detailPoints === null : pointsPending;
+  const detailPoints = currentEpochSelected ? null : selectedEpoch ? parsePoints(settings.points[`${report!.address}:${selectedEpoch.id}`] ?? "") : points;
+  const detailPending = selectedEpoch ? !received.some(id => id === selectedEpoch.id) && detailPoints === null : pointsPending;
   const detailPointsValid = selectedEpoch ? detailPoints !== null && detailPoints > 0 : pointsValid;
   const detailVolumeRatio = report?.fillsScan.status === "complete" && detailSummary && detailPointsValid ? Number(detailSummary.volume) / detailPoints! : null;
   const detailFeeRatio = report?.fillsScan.status === "complete" && detailSummary?.excludedFeeTokens.length === 0 && detailPointsValid ? Number(detailSummary.netFees) / detailPoints! : null;
@@ -133,7 +135,7 @@ export default function TxflowWallet({ initialTheme }: { initialTheme: "light" |
             <p className="tf-help">{selectedEpoch ? `Selected epoch · ${selectedEpoch.label} · ${selectedEpoch.dates}` : `Whole selected period · ${TXFLOW_PERIODS[report.period]}`}</p><TxflowExecutionProfile summary={detailSummary} complete={report.fillsScan.status === "complete"} />
           </section>
           <section className="tf-wallet-card tf-panel" aria-labelledby="tf-points-comparison-heading"><div className="tf-wallet-section-title"><div><span className="tf-eyebrow">{detailPending ? "DISTRIBUTION PENDING" : "MATCHED PERIOD / POINTS EFFICIENCY"}</span><h2 id="tf-points-comparison-heading">Your trades → your points</h2></div></div><div className="tf-earned-points"><span>{detailPointsLabel}</span><strong>{detailPending ? "Pending" : detailPoints !== null ? numberFormat.format(detailPoints) : "—"}{!detailPending && <small>PTS</small>}</strong></div>
-            <div className="tf-wallet-ratios"><div><span>Volume / point</span><strong>{money(detailVolumeRatio)}</strong></div><div><span>Net fill fees / point</span><strong>{detailFeeRatio === null ? "—" : pointCostFormat.format(detailFeeRatio)}</strong></div></div><p className="tf-help">{detailPending ? "Enter points for this epoch above to calculate its ratios." : <>Based on your manual points and trades {selectedEpoch ? `in ${selectedEpoch.label}` : "through the scan cutoff"}. {!detailPointsValid ? "Enter positive points above to see your ratios. " : ""}Ratios require complete fill history and describe past activity, not an official points formula.</>}</p>
+            <div className="tf-wallet-ratios"><div><span>Volume / point</span><strong>{money(detailVolumeRatio)}</strong></div><div><span>Net fill fees / point</span><strong>{detailFeeRatio === null ? "—" : pointCostFormat.format(detailFeeRatio)}</strong></div></div><p className="tf-help">{currentEpochSelected ? "Per-point ratios will be available after distribution and points entry." : detailPending ? "Enter points for this epoch above to calculate its ratios." : <>Based on your manual points and trades {selectedEpoch ? `in ${selectedEpoch.label}` : "through the scan cutoff"}. {!detailPointsValid ? "Enter positive points above to see your ratios. " : ""}Ratios require complete fill history and describe past activity, not an official points formula.</>}</p>
           </section>
         </div>
 
@@ -160,7 +162,7 @@ export default function TxflowWallet({ initialTheme }: { initialTheme: "light" |
         <details className="tf-wallet-method tf-panel">
           <summary>Epoch accounting, funding & methodology <span aria-hidden="true">＋</span></summary>
           <div className="tf-wallet-method-content">
-            <div><h3>Matching trades and points</h3><p className="tf-help">Season 0 ends before 12 October 2026, 00:00 UTC. S1 Epoch 1 includes 12–19 October; Epoch 2 includes 20–26 October; Epoch 3 includes 27 October–2 November. Each final day is included through 23:59:59.999 UTC.</p><p className="tf-help">Only confirmed received distributions enter the awarded-epochs scan. Expected dates do not automatically mark points as received. Points are entered by you and saved per address and epoch. Activity outside these windows remains visible in all-history analysis.</p><p className="tf-help">Holding times are reconstructed at each epoch's cutoff; a later close does not rewrite that earlier profile. Current equity and open positions remain an independent snapshot.</p>{report.overview && <p className="tf-help">API overview volume: {money(report.overview.volume)}. Separate aggregates may lag executions and are not added to fill totals.</p>}</div>
+            <div><h3>Matching trades and points</h3><p className="tf-help">Season 0 ends before 12 October 2026, 00:00 UTC. S1 Epoch 1 includes 12–19 October; Epoch 2 includes 20–26 October; Epoch 3 includes 27 October–2 November. Each final day is included through 23:59:59.999 UTC.</p><p className="tf-help">Awarded totals and their per-point ratios cover only epochs with confirmed distributions. Current-epoch activity is shown separately through the scan time. Points are entered by you and saved per address and epoch. All-history analysis includes activity outside these windows.</p><p className="tf-help">Holding times are reconstructed at each epoch's cutoff; a later close does not rewrite that earlier profile. Current equity and open positions remain an independent snapshot.</p>{report.overview && <p className="tf-help">API overview volume: {money(report.overview.volume)}. Separate aggregates may lag executions and are not added to fill totals.</p>}</div>
             <div><h3>Funding cash flow</h3><dl className="tf-wallet-definition"><div><dt>Funding paid</dt><dd>{money(report.funding?.paid)}</dd></div><div><dt>Funding received</dt><dd>{money(report.funding?.received)}</dd></div><div><dt>Net received</dt><dd>{money(report.funding?.net)}</dd></div></dl><p className="tf-help">Positive funding is received; negative is paid. Funding remains separate from fill fees and closed PnL.</p></div>
             <p className="tf-help tf-method-wide">Perpetual accounts only. Volume sums executed size × price for every fill leg; both opening and closing executions count. Fees and rebates are summed in USDC; other fee tokens are excluded and flagged. History is paged with a fixed end time, deduplicated by execution identity, and capped at 20 pages per history type / 50 seconds. Partial or unavailable histories are labelled. Monetary sums use 18 decimal places internally, with rounding for display. Indexed history may lag the latest block. <a href="https://docs.txflow.com/api/info" target="_blank" rel="noopener noreferrer">TxFlow Info API ↗</a></p>
           </div>

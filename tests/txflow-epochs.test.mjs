@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { txflowAwardedEpochs, txflowPointsStatus, txflowReceivedEpochs, txflowEpochIds, txflowPeriodRange, txflowSelectionWindows, txflowInWindows, summarizeTxFills, summarizeTxFunding, analyzeTxHolding, buildTxEpochReports, normalizeTxFill, parseTxflowWalletSettings } from '../lib/txflow-wallet.ts';
+import { txflowAwardedEpochs, txflowCurrentEpoch, txflowPointsStatus, txflowReceivedEpochs, txflowEpochIds, txflowPeriodRange, txflowSelectionWindows, txflowInWindows, summarizeTxFills, summarizeTxFunding, analyzeTxHolding, buildTxEpochReport, buildTxEpochReports, normalizeTxFill, parseTxflowWalletSettings } from '../lib/txflow-wallet.ts';
 
 const at = value => Date.parse(value);
 const today = at('2026-10-26T18:00:00Z'), afterDistribution = at('2026-10-28T12:00:00Z');
@@ -110,4 +110,29 @@ test('Epoch 3 enters awarded totals on 3 November and excludes subsequent tradin
   assert.equal(third.summary.volume,'200');assert.equal(third.completed,true);
   const saved=parseTxflowWalletSettings(JSON.stringify({address,period:'EPOCH_3',points:{[`${address}:EPOCH_1`]:'10',[`${address}:EPOCH_3`]:'30'},received:{[`${address}:EPOCH_3`]:true}}));
   assert.equal(saved.period,'EPOCH_3');assert.equal(saved.points[`${address}:EPOCH_3`],'30');assert.equal(saved.points[`${address}:EPOCH_1`],'10');
+});
+
+test('the current epoch has its own activity and rolls forward without entering awarded totals', () => {
+  const cutoff = at('2026-11-03T00:00:00Z'), now = at('2026-11-05T12:00:00Z');
+  const current = txflowCurrentEpoch(now);
+  assert.equal(current.id, 'EPOCH_4');
+  assert.deepEqual(current.range, { from: cutoff, to: now, endExclusive: false });
+  assert.equal(txflowCurrentEpoch(cutoff - 1).id, 'EPOCH_3');
+  assert.equal(txflowCurrentEpoch(at('2026-11-10T00:00:00Z')).id, 'EPOCH_5');
+  assert.throws(() => txflowAwardedEpochs([current.id], now));
+
+  const fills = [fill(cutoff - 1), { ...fill(cutoff, 'A', '1'), role: 'Taker' }, fill(now + 1)];
+  const fundings = fills.map(row => ({ key: row.key, time: row.time, market: row.market, amount: '1' }));
+  const awarded = txflowSelectionWindows('AWARDED', now);
+  assert.equal(summarizeTxFills(fills.filter(row => txflowInWindows(row.time, awarded))).makerVolume, '100');
+  assert.equal(summarizeTxFills(fills.filter(row => txflowInWindows(row.time, awarded))).takerVolume, '0');
+  assert.equal(summarizeTxFunding(fundings.filter(row => txflowInWindows(row.time, awarded))).count, 1);
+
+  const report = buildTxEpochReport(fills, fundings, current, scan);
+  assert.equal(report.completed, false);
+  assert.equal(report.summary.fills, 1);
+  assert.equal(report.summary.takerVolume, '100');
+  assert.equal(report.summary.feesByRole.taker.net, '0.01');
+  assert.equal(report.funding.net, '1');
+  assert.equal(report.holding.buckets.find(row => row.id === 'under1h').volume, '100');
 });

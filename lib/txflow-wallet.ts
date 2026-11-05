@@ -9,8 +9,32 @@ export const TXFLOW_EPOCHS = {
 };
 export const TXFLOW_PERIODS = { AWARDED: "Awarded epochs only", S1: "Season 1 · Epochs 1–3", S0: "S0 · Before 12 Oct 2026", EPOCH_1: "S1 · Epoch 1 · 12–19 Oct", EPOCH_2: "S1 · Epoch 2 · 20–26 Oct", EPOCH_3: "S1 · Epoch 3 · 27 Oct–2 Nov", ALLTIME: "All available history", "24H": "Last 24 hours", "7D": "Last 7 days", "30D": "Last 30 days", "90D": "Last 90 days" };
 export type TxflowEpochId = keyof typeof TXFLOW_EPOCHS;
+export type TxflowReportEpochId = TxflowEpochId | `EPOCH_${number}`;
 export type TxflowPeriod = keyof typeof TXFLOW_PERIODS;
 export type TxflowWindow = { from: number | null; to: number; endExclusive: boolean };
+type TxflowEpochWindow = { id: TxflowReportEpochId; label: string; dates: string; completed: boolean; range: TxflowWindow };
+const weekMs = 7 * 86_400_000;
+const epochDateFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+
+export function txflowCurrentEpoch(now: number): TxflowEpochWindow | null {
+  const entries = Object.entries(TXFLOW_EPOCHS);
+  for (const [id, epoch] of entries) {
+    if (epoch.start === null) continue;
+    const from = Date.parse(epoch.start);
+    if (from <= now && now < Date.parse(epoch.end)) {
+      return { id: id as TxflowEpochId, label: epoch.label, dates: epoch.dates, completed: false, range: { from, to: now, endExclusive: false } };
+    }
+  }
+  const [lastId, lastEpoch] = entries[entries.length - 1];
+  const nextStart = Date.parse(lastEpoch.end);
+  if (now < nextStart) return null;
+  // Continue the weekly UTC windows after the last configured distribution.
+  const elapsedWeeks = Math.floor((now - nextStart) / weekMs);
+  const index = Number(lastId.slice("EPOCH_".length)) + 1 + elapsedWeeks;
+  const from = nextStart + elapsedWeeks * weekMs;
+  const dates = epochDateFormat.formatRange(new Date(from), new Date(from + weekMs - 1));
+  return { id: `EPOCH_${index}`, label: `S1 · Epoch ${index}`, dates, completed: false, range: { from, to: now, endExclusive: false } };
+}
 export const txflowPointsStatus = (period: TxflowPeriod, received: TxflowEpochId[] = []): "pending" | "manual" => Object.hasOwn(TXFLOW_EPOCHS, period) && !TXFLOW_EPOCHS[period as TxflowEpochId].distributed && !received.includes(period as TxflowEpochId) ? "pending" : "manual";
 export const txflowEpochDistributed = (id: TxflowEpochId, now: number) => TXFLOW_EPOCHS[id].distributed && Date.parse(`${TXFLOW_EPOCHS[id].distribution}T00:00:00Z`) <= now;
 export const txflowDefaultAwarded = (now = Date.now()): TxflowEpochId[] => (Object.keys(TXFLOW_EPOCHS) as TxflowEpochId[]).filter(id => txflowEpochDistributed(id, now));
@@ -93,9 +117,10 @@ export type TxWalletReport = {
   markets: (TxSummary & { market: string })[]; days: (TxSummary & { day: string })[];
   holding: TxHoldingAnalysis;
   awardedEpochs: TxflowEpochId[]; windows: { from: string | null; to: string; endExclusive: boolean }[];
-  epochs: TxEpochReport[];
+  epochs: (TxEpochReport & { id: TxflowEpochId })[];
+  currentEpoch?: TxEpochReport;
 };
-export type TxEpochReport = { id: TxflowEpochId; label: string; dates: string; range: { from: string | null; to: string; endExclusive: boolean }; completed: boolean;
+export type TxEpochReport = { id: TxflowReportEpochId; label: string; dates: string; range: { from: string | null; to: string; endExclusive: boolean }; completed: boolean;
   summary: TxSummary | null; funding: TxWalletReport["funding"]; holding: TxHoldingAnalysis; markets: TxWalletReport["markets"] };
 
 export function txRecord(value: unknown): Record<string, unknown> {
@@ -351,18 +376,24 @@ export function analyzeTxHolding(fills: TxFill[], options: { from: number | null
 }
 
 
-export function buildTxEpochReports(fills: TxFill[], fundings: TxFunding[], ids: TxflowEpochId[], now: number,
-  scan: { fillsStatus: TxScan<TxFill>["status"]; fundingStatus: TxScan<TxFunding>["status"]; historyStatus: TxScan<TxFill>["status"]; historyPages: number }): TxEpochReport[] {
+type TxEpochScan = { fillsStatus: TxScan<TxFill>["status"]; fundingStatus: TxScan<TxFunding>["status"]; historyStatus: TxScan<TxFill>["status"]; historyPages: number };
+
+export function buildTxEpochReports(fills: TxFill[], fundings: TxFunding[], ids: TxflowEpochId[], now: number, scan: TxEpochScan) {
   return ids.map(id => {
-    const epoch = TXFLOW_EPOCHS[id], range = txflowEpochRange(id, now);
-    const selected = fills.filter(fill => txflowInWindows(fill.time, [range]));
-    const funding = fundings.filter(row => txflowInWindows(row.time, [range]));
-    let holding: TxHoldingAnalysis;
-    try { holding = analyzeTxHolding(fills, { ...range, selectedComplete: scan.fillsStatus === "complete", historyStatus: scan.historyStatus, historyPages: scan.historyPages }); }
-    catch { holding = analyzeTxHolding(selected, { ...range, selectedComplete: false, historyStatus: scan.historyStatus, historyPages: scan.historyPages }); }
-    return { id, label: epoch.label, dates: epoch.dates, completed: now >= Date.parse(epoch.end),
-      range: { from: range.from === null ? null : new Date(range.from).toISOString(), to: new Date(range.to).toISOString(), endExclusive: range.endExclusive },
-      summary: scan.fillsStatus === "unavailable" ? null : summarizeTxFills(selected),
-      funding: scan.fundingStatus === "unavailable" ? null : summarizeTxFunding(funding), holding, markets: groupTxFills(selected).markets };
+    const { label, dates, end } = TXFLOW_EPOCHS[id];
+    return buildTxEpochReport(fills, fundings, { id, label, dates, completed: now >= Date.parse(end), range: txflowEpochRange(id, now) }, scan);
   });
+}
+
+export function buildTxEpochReport<Id extends TxflowReportEpochId>(fills: TxFill[], fundings: TxFunding[], epoch: TxflowEpochWindow & { id: Id }, scan: TxEpochScan): TxEpochReport & { id: Id } {
+  const { id, range, ...details } = epoch;
+  const selected = fills.filter(fill => txflowInWindows(fill.time, [range]));
+  const funding = fundings.filter(row => txflowInWindows(row.time, [range]));
+  let holding: TxHoldingAnalysis;
+  try { holding = analyzeTxHolding(fills, { ...range, selectedComplete: scan.fillsStatus === "complete", historyStatus: scan.historyStatus, historyPages: scan.historyPages }); }
+  catch { holding = analyzeTxHolding(selected, { ...range, selectedComplete: false, historyStatus: scan.historyStatus, historyPages: scan.historyPages }); }
+  return { id, ...details,
+    range: { from: range.from === null ? null : new Date(range.from).toISOString(), to: new Date(range.to).toISOString(), endExclusive: range.endExclusive },
+    summary: scan.fillsStatus === "unavailable" ? null : summarizeTxFills(selected),
+    funding: scan.fundingStatus === "unavailable" ? null : summarizeTxFunding(funding), holding, markets: groupTxFills(selected).markets };
 }

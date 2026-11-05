@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { getWeeklyPoints, readWeeklyPoints } from '../lib/leaderboard.ts';
-import { fillsForWeek, marketBreakdown, normalizeFill, weeklyEfficiency, percentChange } from '../lib/wallet-analytics.ts';
+import { fillsForWeek, marketBreakdown, normalizeFill, weeklyEfficiency, percentChange, pointsDistributionAt } from '../lib/wallet-analytics.ts';
 
 const snapshot = (points, visible = true, present = true) => ({ season: 'Season 1', points_visible: visible, total: present ? 1 : 0,
   updated_at: '2026-10-22T09:00:00Z', entries: present ? [{ rank: 1, name: 'Test User', tier: 'Gold', points }] : [], by_name: present ? { 'test user': 0 } : {} });
@@ -12,10 +12,12 @@ const points = { week: 3, distributed_at: week.end, status: 'recorded', earned_p
 
 test('saved distributions give separate weekly gains that sum to the cumulative total', async () => {
   const points = await readWeeklyPoints('  WITTY   PHOENIX ');
-  assert.deepEqual(points.map(row => row.earned_points), [2.98, 12.78, 18.15, 18.09]);
-  assert.equal(points.reduce((sum, row) => sum + Math.round(row.earned_points * 100), 0), 5200);
-  assert.equal(points[3].distributed_at, '2026-10-28T19:00:00Z');
-  assert.notEqual(points[3].downloaded_at, points[3].distributed_at);
+  assert.deepEqual(points.map(row => row.earned_points), [2.98, 12.78, 18.15, 18.09, 8.48]);
+  assert.equal(points.reduce((sum, row) => sum + Math.round(row.earned_points * 100), 0), 6048);
+  for (const row of points) {
+    assert.equal(Date.parse(row.distributed_at), pointsDistributionAt(row.week));
+    assert.notEqual(row.downloaded_at, row.distributed_at);
+  }
 });
 
 test('missing or hidden history never becomes zero or a multiweek gain', () => {

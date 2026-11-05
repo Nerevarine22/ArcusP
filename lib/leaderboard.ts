@@ -46,6 +46,7 @@ const snapshots = [
   { week: 2, distributed_at: "2026-10-14T19:00:00Z", file: "leaderboard-season-1-2026-10-15.json" },
   { week: 3, distributed_at: "2026-10-21T19:00:00Z", file: "leaderboard-season-1-2026-10-22.json" },
   { week: 4, distributed_at: "2026-10-28T19:00:00Z", file: "leaderboard-season-1-2026-10-28.json" },
+  { week: 5, distributed_at: "2026-11-04T20:00:00Z", file: "leaderboard-season-1-2026-11-05.json" },
 ];
 
 export async function readLeaderboard(): Promise<Snapshot> {

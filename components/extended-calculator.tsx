@@ -59,7 +59,7 @@ export default function ExtendedCalculator() {
       <Link href="/extended" className="ex-brand" aria-label="Extended points calculator"><img src="/brand/extended/logo.svg" alt="Extended" width="159" height="36" /><span>Points calculator</span></Link>
       <nav aria-label="Extended navigation">
         {featureFlags.multiExchange && <Link href="/" className="ex-project-link">← All projects</Link>}
-        <ReferralOffer className="ex-referral" href={EXTENDED_REFERRAL_URL} code={EXTENDED_REFERRAL_CODE} label="Open Extended" />
+        <ReferralOffer className="ex-referral" href={EXTENDED_REFERRAL_URL} code={EXTENDED_REFERRAL_CODE} label="10% off fees" />
       </nav>
     </header>
 

@@ -191,6 +191,13 @@
 .txflow-page .tf-wallet-scope-note { color:var(--tf-muted); font-size:9px; line-height:1.8; margin:13px 0 24px; }
 .txflow-page .tf-wallet-analysis-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
 .txflow-page .tf-wallet-card { padding:25px; margin-bottom:20px; min-width:0; }
+.txflow-page .tf-leaderboard-controls { display:flex; align-items:center; flex-wrap:wrap; gap:9px 12px; color:var(--tf-muted); font-size:11px; }
+.txflow-page .tf-leaderboard-controls select { min-height:36px; padding:5px 9px; border:1px solid var(--tf-line); background:var(--tf-fill); color:var(--tf-text); font:inherit; font-size:14px; }
+.txflow-page .tf-leaderboard-controls a { color:var(--tf-accent); }
+.txflow-page .tf-leaderboard-ranks { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:0 0 12px; }
+.txflow-page .tf-leaderboard-ranks>div { min-width:0; padding:12px clamp(8px,2vw,18px); border:1px solid var(--tf-line); background:var(--tf-fill); }
+.txflow-page .tf-leaderboard-ranks dt { color:var(--tf-muted); font-size:11px; }
+.txflow-page .tf-leaderboard-ranks dd { margin:6px 0 0; color:var(--tf-text); font-size:clamp(12px,3vw,23px); font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
 .txflow-page .tf-wallet-analysis-grid .tf-wallet-card { margin:0; }
 .txflow-page .tf-wallet-definition { margin:20px 0 0; }
 .txflow-page .tf-wallet-definition>div { display:flex; justify-content:space-between; gap:20px; align-items:center; padding:11px 0; border-bottom:1px solid var(--tf-line); }

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import TxflowHeader from "@/components/txflow-header";
 import TxflowHolding from "@/components/txflow-holding";
+import TxflowLeaderboard from "@/components/txflow-leaderboard";
 import TxflowEpochAnalysis from "@/components/txflow-epoch-analysis";
 import TxflowExecutionProfile from "@/components/txflow-execution-profile";
 import { useTxflowWallet } from "@/hooks/use-txflow-wallet";
@@ -130,6 +131,8 @@ export default function TxflowWallet({ initialTheme }: { initialTheme: "light" |
           <article className="tf-panel"><span>Net funding received</span><strong className={signClass(report.funding?.net)}>{money(report.funding?.net)}</strong><p>{report.funding ? `${numberFormat.format(report.funding.count)} settlements` : "Funding history unavailable"}<b className={`tf-data-badge ${report.fundingScan.status}`}>{report.fundingScan.status === "complete" ? "All pages read" : report.fundingScan.status === "partial" ? "Partial history" : "Unavailable"}</b></p></article>
         </section>
         <p className="tf-wallet-scope-note">{report.windows.map((window, index) => <span key={index}>{index > 0 && " + "}{window.from ? dateFormat.format(new Date(window.from)) : "All indexed history"} → {dateFormat.format(new Date(Date.parse(window.to) - (window.endExclusive ? 1 : 0)))} UTC</span>)} · All monetary values in USDC. {report.fillsScan.status !== "complete" && "Fill totals cover only successfully read rows."}</p>
+
+        <TxflowLeaderboard address={report.address} />
 
         {selectedEpoch ? <TxflowEpochAnalysis report={report} points={settings.points} received={received} selectedId={selectedEpoch.id}
           now={now} onSelect={setSelectedEpochId} onPoints={updatePoints} onReceived={(id, value) => {

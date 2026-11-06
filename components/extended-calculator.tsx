@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import NumberTransition from "@/components/number-transition";
 import ExtendedMarketCard from "@/components/extended-market-card";
+import ReferralOffer from "@/components/referral-offer";
 import { useExtendedEstimate } from "@/hooks/use-extended-estimate";
 import { parsePoints } from "@/lib/estimator";
 import { featureFlags } from "@/lib/features";
+import { EXTENDED_REFERRAL_CODE, EXTENDED_REFERRAL_URL } from "@/lib/projects";
 import { EXTENDED_ALLOCATION, EXTENDED_COMMUNITY_TOKENS, EXTENDED_FDV_PRESETS, EXTENDED_POINTS_SOURCE, EXTENDED_SUPPLY, EXTENDED_TOKENS_PER_POINT, EXTENDED_TOTAL_POINTS, estimateExtended, extendedTokensForPoints } from "@/lib/extended-estimator";
 import { EXTENDED_PREMARKET_URL } from "@/lib/extended-premarket";
 
@@ -55,7 +57,10 @@ export default function ExtendedCalculator() {
   return <div className="ex-page"><div className="ex-shell">
     <header className="ex-header">
       <Link href="/extended" className="ex-brand" aria-label="Extended points calculator"><img src="/brand/extended/logo.svg" alt="Extended" width="159" height="36" /><span>Points calculator</span></Link>
-      <nav aria-label="Extended navigation">{featureFlags.multiExchange && <Link href="/" className="ex-project-link">← All projects</Link>}<a className="ex-open" href="https://app.extended.exchange/" target="_blank" rel="noopener noreferrer">Open Extended <span aria-hidden="true">↗</span></a></nav>
+      <nav aria-label="Extended navigation">
+        {featureFlags.multiExchange && <Link href="/" className="ex-project-link">← All projects</Link>}
+        <ReferralOffer className="ex-referral" href={EXTENDED_REFERRAL_URL} code={EXTENDED_REFERRAL_CODE} label="Open Extended" />
+      </nav>
     </header>
 
     <main>

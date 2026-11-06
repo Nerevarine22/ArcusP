@@ -9,6 +9,9 @@ export type Project = {
   walletHref?: string;
 };
 
+export const EXTENDED_REFERRAL_CODE = "ATOMS";
+export const EXTENDED_REFERRAL_URL = `https://app.extended.exchange/join/${EXTENDED_REFERRAL_CODE}`;
+
 export const projects: Project[] = [
   {
     id: "arcus",
@@ -35,7 +38,7 @@ export const projects: Project[] = [
     description: "Explore the value of your Xpoints across XTEN valuations and a fixed 30% community allocation.",
     tools: ["Points calculator"],
     href: "/extended",
-    website: "https://app.extended.exchange/",
+    website: EXTENDED_REFERRAL_URL,
   },
   {
     id: "variational",

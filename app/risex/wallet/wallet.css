@@ -1,0 +1,82 @@
+.rx-wallet-page .rx-intro h1 span { display: inline; }
+.rx-wallet-page .rx-intro-copy > p:last-child { max-width: 600px; }
+.rx-wallet-page .rx-wallet-query { margin-bottom: 22px; }
+.rx-wallet-form { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(0,1fr) auto; gap: 12px; align-items: end; }
+.rx-wallet-form .rx-scope-field { margin: 0; min-width: 0; }
+.rx-scope-field select { width: 100%; min-height: 43px; padding: 7px 10px; border: 1px solid #35644e; color: var(--rx-text); background: var(--rx-surface); font: inherit; }
+.rx-scope-field select:focus-visible { outline: 2px solid var(--rx-green); outline-offset: 3px; }
+.rx-period-points { max-width: 320px; }
+.rx-wallet-disclosure summary { cursor: pointer; font-weight: 700; }
+.rx-wallet-disclosure summary span { margin-left: 8px; color: var(--rx-muted); font-size: 11px; font-weight: 400; }
+.rx-analyze-button { min-height: 43px; padding: 0 17px; border: 1px solid var(--rx-green); border-radius: 4px; background: var(--rx-green); color: #07130c; font-weight: 700; }
+.rx-analyze-button:hover:not(:disabled) { background: #50eba5; }
+.rx-wallet-help, .rx-wallet-error { color: var(--rx-muted); margin: 12px 0 0; font-size: 12px; line-height: 1.55; }
+.rx-wallet-error { color: #ffb3a4; }
+.rx-wallet-results { display: grid; gap: 20px; margin-bottom: 22px; }
+.rx-wallet-warnings { color: #ebd2a4; border-color: #594b32; background: #18150e; }
+.rx-wallet-warnings ul { margin: 6px 0 0; padding-left: 18px; }
+.rx-wallet-warnings li + li { margin-top: 4px; }
+.rx-epochs-heading { display: flex; justify-content: space-between; align-items: end; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+.rx-epoch-toggle { padding: 8px 11px; border: 1px solid var(--rx-border); border-radius: 4px; color: var(--rx-text); background: var(--rx-surface); }
+.rx-epoch-toggle:hover { border-color: var(--rx-green); }
+.rx-epoch-grid {
+  --epoch-border: var(--rx-border);
+  --epoch-text: var(--rx-text);
+  --epoch-surface: var(--rx-surface);
+  --epoch-hover: #45956d;
+  --epoch-accent: var(--rx-green);
+  --epoch-selected: #10271d;
+  --epoch-muted: var(--rx-muted);
+  --epoch-bg: var(--rx-bg);
+  --epoch-error: #eb9b8b;
+  --epoch-volume: #5a9c7e;
+}
+.rx-epoch-track { display: block; height: 3px; margin: 4px 0 7px; overflow: hidden; border-radius: 2px; background: var(--rx-border); }
+.rx-epoch-track i { display: block; height: 100%; background: #5a9c7e; }
+.rx-epoch-state { display: inline-block; vertical-align: middle; margin-left: 9px; padding: 4px 7px; border: 1px solid #35644e; border-radius: 4px; color: var(--rx-muted); font-size: 11px; font-weight: 500; }
+.rx-selected-epoch h2 + p { margin-top: 4px; }
+.rx-wallet-columns { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; }
+.rx-role-maker { --rx-role-color: var(--rx-green); }
+.rx-role-taker { --rx-role-color: #699a84; }
+.rx-role-unknown { --rx-role-color: #9da9a2; }
+.rx-execution-bar { display: flex; height: 9px; margin: 16px 0 12px; overflow: hidden; background: var(--rx-border); }
+.rx-execution-bar span { background: var(--rx-role-color); }
+.rx-execution-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.rx-execution-card { min-width: 0; padding: 15px 17px; border: 1px solid var(--rx-border); border-radius: 4px; background: var(--rx-surface); }
+.rx-execution-card.rx-role-unknown { grid-column: 1/-1; }
+.rx-execution-card-heading, .rx-execution-card dl > div { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; }
+.rx-execution-card-heading h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; }
+.rx-execution-card-heading h3::before { content: ""; width: 6px; height: 6px; background: var(--rx-role-color); }
+.rx-execution-card-heading > span, .rx-execution-card dt { color: var(--rx-muted); font-size: 12px; }
+.rx-execution-card dl { margin: 14px 0 0; }
+.rx-execution-card dl > div + div { margin-top: 8px; }
+.rx-execution-card dl > div:last-child { padding-top: 9px; border-top: 1px solid var(--rx-border); }
+.rx-execution-card dd { margin: 0; font-weight: 500; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.rx-wallet-table-wrap { overflow-x: auto; margin-top: 14px; }
+.rx-wallet-table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+.rx-wallet-table :is(th,td) { border-bottom: 1px solid var(--rx-border); padding: 10px 8px; text-align: right; white-space: nowrap; }
+.rx-wallet-table th:first-child { text-align: left; padding-left: 0; }
+.rx-wallet-table thead { color: var(--rx-muted); font-size: 11px; }
+.rx-wallet-metrics { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin: 16px 0 0; }
+.rx-wallet-metrics.rx-wallet-balance { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.rx-wallet-metrics div { min-width: 0; padding: 10px 12px; background: var(--rx-surface); border: 1px solid var(--rx-border); }
+.rx-wallet-metrics dt { color: var(--rx-muted); font-size: 11px; }
+.rx-wallet-metrics dd { margin: 4px 0 0; font-size: clamp(15px,2vw,20px); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.rx-wallet-lines { list-style: none; margin: 14px 0 0; padding: 0; }
+.rx-wallet-lines li { display: flex; gap: 12px; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--rx-border); }
+.rx-wallet-lines small { color: var(--rx-muted); margin-left: 4px; }
+.rx-wallet-lines strong { text-align: right; }
+.rx-wallet-method a { color: var(--rx-green); text-decoration: underline; text-underline-offset: 2px; }
+.rx-daily-list { list-style: none; margin: 14px 0 0; padding: 0; }
+.rx-daily-list li { display: grid; grid-template-columns: 42px minmax(12px,1fr) auto; gap: 10px; align-items: center; padding: 7px 0; }
+.rx-daily-list strong { text-align: right; }
+.rx-daily-list small { display: block; color: var(--rx-muted); font-weight: 400; }
+@media (max-width: 760px) {
+  .rx-wallet-columns { grid-template-columns: minmax(0,1fr); }
+}
+@media (max-width: 540px) {
+  .rx-wallet-form { grid-template-columns: minmax(0,1fr); }
+  .rx-execution-grid { grid-template-columns: minmax(0,1fr); }
+  .rx-wallet-metrics.rx-wallet-balance { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .rx-wallet-page .rx-field input { font-size: 16px; }
+}

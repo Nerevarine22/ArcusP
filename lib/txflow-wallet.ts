@@ -91,7 +91,7 @@ export function parseTxflowWalletSettings(raw: string | null): TxflowWalletSetti
     if (!saved || typeof saved !== "object" || Array.isArray(saved)) return TXFLOW_WALLET_DEFAULTS;
     const points: Record<string, string> = {}, received: Record<string, boolean> = {};
     if (saved.points && typeof saved.points === "object" && !Array.isArray(saved.points)) for (const [key, value] of Object.entries(saved.points).slice(-500)) {
-      if (/^0x[0-9a-f]{40}:(S0|EPOCH_1|EPOCH_2|EPOCH_3|24H|7D|30D|90D)$/.test(key) && typeof value === "string" && value.length <= 100) points[key] = value;
+      if (/^0x[0-9a-f]{40}:(S0|EPOCH_[1-9]\d{0,3}|24H|7D|30D|90D)$/.test(key) && typeof value === "string" && value.length <= 100) points[key] = value;
     }
     if (saved.received && typeof saved.received === "object" && !Array.isArray(saved.received)) for (const [key, value] of Object.entries(saved.received).slice(-500)) {
       if (/^0x[0-9a-f]{40}:(S0|EPOCH_1|EPOCH_2|EPOCH_3)$/.test(key) && typeof value === "boolean") received[key] = value;

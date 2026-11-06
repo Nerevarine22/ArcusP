@@ -46,6 +46,9 @@
 .hub-project-cover { position:relative; isolation:isolate; height:236px; color:#e8ddbe; overflow:hidden; background:#1b3425; }
 .hub-project-txflow .hub-project-cover { background:#101e13; color:#8df885; }
 .hub-project-extended .hub-project-cover { background:#042520; color:#00bf87; }
+.hub-project-risex { --project-accent:#03de82; }
+.hub-project-risex .hub-project-cover { background:radial-gradient(ellipse at 75% 36%,#0b3021,#070e0b 70%); color:var(--project-accent); }
+.hub-project-risex .hub-cover-art>img { opacity:.2; }
 .hub-project-top { position:absolute; top:24px; left:25px; right:25px; display:flex; align-items:center; justify-content:space-between; gap:10px; z-index:1; font-size:8px; letter-spacing:1.1px; }
 .hub-project-top>span:first-child { color:#fff9; }
 .hub-project-status { display:flex; align-items:center; gap:6px; color:#fffc; letter-spacing:0; font-size:9px; }

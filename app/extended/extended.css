@@ -27,11 +27,13 @@
 .ex-summary { position:relative; isolation:isolate; overflow:hidden; background:linear-gradient(120deg,#0d2019,#0b1410 72%); border:1px solid #254d3c; border-radius:13px; padding:25px 30px 17px; }
 .ex-summary-art { position:absolute; width:390px; height:390px; right:-95px; top:-80px; z-index:-1; pointer-events:none; transform:rotate(-12deg); }
 .ex-summary-top { display:flex; flex-wrap:wrap; align-items:center; gap:13px; font-size:10px; color:#86a393; }
+.ex-summary-top a { color:#ace1cb; text-decoration:underline; text-underline-offset:3px; }
 .ex-badge { border:1px solid #32634e; border-radius:4px; padding:6px 9px; letter-spacing:1.1px; font-size:8px; color:#ace1cb; }
 .ex-summary-grid { display:grid; grid-template-columns:1.05fr 1fr; padding:25px 0 26px; gap:36px; }
 .ex-payout { min-width:0; display:flex; flex-direction:column; justify-content:center; }
 .ex-payout h2 { font-size:11px; color:#a7b7ae; line-height:1.5; }
 .ex-value { display:block; font-size:clamp(46px,5.8vw,76px); font-weight:400; letter-spacing:-3px; line-height:1.2; color:var(--ex-accent); margin:11px 0 13px; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.ex-value small { display:inline-block; font-size:.31em; letter-spacing:0; }
 .ex-payout p { color:#a7b7ae; line-height:1.8; font-size:11px; }
 .ex-payout p>span { margin:0 6px; color:#658676; }
 .ex-summary-details { min-width:0; border-left:1px solid #2b493b; padding-left:30px; }
@@ -39,7 +41,6 @@
 .ex-your-points>span { display:flex; align-items:center; gap:15px; color:#a7b7ae; font-size:10px; }
 .ex-your-points small { color:#718b7e; font-size:7px; letter-spacing:1px; }
 .ex-your-points strong { display:block; font-size:33px; line-height:1.2; font-weight:400; margin-top:8px; letter-spacing:-1px; overflow-wrap:anywhere; }
-.ex-your-points em { font-size:11px; font-style:normal; color:#86a393; margin-left:9px; letter-spacing:0; }
 .ex-metrics { display:grid; grid-template-columns:1fr 1fr; gap:17px 20px; padding-top:17px; }
 .ex-metrics>div { min-width:0; }
 .ex-metrics dt { color:#86a393; font-size:9px; margin-bottom:6px; }
@@ -61,6 +62,8 @@
 .ex-page .ex-field input[aria-invalid=true] { border-color:#d78f78; }
 .ex-page .ex-field input.ex-points-input { height:61px; font-size:29px; letter-spacing:-1px; background:#10231a; border-color:#2c5942; }
 .ex-page .ex-help { color:var(--ex-muted); font-size:10px; line-height:1.7; margin-top:10px; }
+.ex-converted { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:6px 10px; margin-top:12px; padding:11px 12px; border:1px solid #2c5942; border-radius:6px; color:#a7b7ae; font-size:11px; }
+.ex-converted strong { color:var(--ex-accent); font-size:14px; font-variant-numeric:tabular-nums; }
 .ex-help a { color:#b2c7bc; text-decoration:underline; text-underline-offset:3px; }
 .ex-page .ex-error { color:#f2a890; font-size:11px; line-height:1.6; margin-top:9px; }
 .ex-fdv-field { border-top:1px solid var(--ex-line); padding-top:24px; }
@@ -125,11 +128,9 @@
 .ex-market-warning { color:#d9b795; font-size:11px; line-height:1.8; margin-top:16px !important; }
 @media(max-width:480px) { .ex-market-estimate { align-items:flex-start; flex-direction:column; gap:14px; }.ex-market-estimate strong { font-size:30px; }.ex-market-estimate .ex-apply-reference { width:100%; }.ex-threshold { grid-template-columns:70px minmax(0,1fr) 38px; gap:10px; }.ex-market-update { gap:10px; font-size:8px; }.ex-market-event { font-size:9px; }.ex-reference-heading .ex-eyebrow { font-size:7px; letter-spacing:.7px; } }
 .ex-matrix { padding:24px 23px 0; overflow:hidden; }
-.ex-matrix-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
+.ex-matrix-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:22px; }
 .ex-matrix-heading h2 { font-size:23px; line-height:1.25; letter-spacing:-.8px; margin-top:9px; }
 .ex-matrix-tag { flex-shrink:0; border:1px solid #2d4135; background:#142118; color:#80b597; border-radius:4px; padding:6px 7px; font-size:7px; letter-spacing:.6px; margin-top:2px; }
-.ex-matrix-description { color:var(--ex-muted); font-size:10px; line-height:1.7; margin-top:12px !important; margin-bottom:21px !important; }
-.ex-matrix-description>span { color:#4d6859; padding:0 4px; }
 .ex-table-wrap { overflow-x:auto; overscroll-behavior-x:contain; margin:0 -6px; }
 .ex-table { border-collapse:collapse; border-spacing:0; table-layout:auto; width:100%; font-variant-numeric:tabular-nums; }
 .ex-table th,.ex-table td { white-space:nowrap; text-align:right; padding:18px 10px; border-bottom:1px solid #252d27; }
@@ -139,15 +140,25 @@
 .ex-table tbody th button { display:flex; width:100%; align-items:center; gap:9px; min-height:63px; background:transparent; border:0; padding:15px 10px; color:#becbc2; text-align:left; font-size:14px; }
 .ex-table tbody th button>i { flex-shrink:0; width:4px; height:4px; border-radius:50%; background:#3e5245; }
 .ex-table tbody th button>span { margin-left:auto; color:#536f5e; font-size:13px; }
+.ex-table tbody th button>b { font-weight:inherit; }
+.ex-table tbody th button small { display:block; margin-top:4px; color:var(--ex-muted); font-size:9px; line-height:1.35; white-space:normal; }
 .ex-table tbody td { font-size:14px; color:#bdc8c0; }
 .ex-table tbody td:last-child { color:var(--ex-text); }
 .ex-table .ex-active-row { background:#00bc840d; }
 .ex-table .ex-active-row th button,.ex-table .ex-active-row td:last-child { color:var(--ex-accent); }
 .ex-table .ex-active-row th button>i { background:var(--ex-accent); }
-.ex-table tbody tr { cursor:pointer; }
-.ex-table tbody tr:hover,.ex-table tbody tr:focus-within { background:#142119; }
+.ex-table .ex-premarket-row { background:#112820; --ex-row-hover:#16362a; }
+.ex-table .ex-premarket-row.ex-active-row { background:#153b2d; --ex-row-hover:#194333; }
+.ex-table .ex-premarket-row th { box-shadow:inset 2px 0 #00bc8470; }
+.ex-table .ex-premarket-row th button { min-height:73px; }
+.ex-table .ex-premarket-row th button>i { background:var(--ex-accent); }
+.ex-table .ex-premarket-row th button small { color:#a3c6b5; }
+.ex-table tbody tr:has(button:enabled) { cursor:pointer; }
+.ex-table tbody tr:has(button:enabled):hover,.ex-table tbody tr:focus-within { background:var(--ex-row-hover,#142119); }
 .ex-table tbody tr:last-child th,.ex-table tbody tr:last-child td { border-bottom:0; }
-.ex-matrix-footer { display:flex; gap:8px; align-items:center; margin:0 -23px; padding:16px 23px; font-size:9px; color:#7f9c8a; border-top:1px solid var(--ex-line); background:#0b120d; line-height:1.6; }
+.ex-matrix-footer { display:flex; flex-wrap:wrap; justify-content:space-between; gap:6px 16px; align-items:center; margin:0 -23px; padding:16px 23px; font-size:9px; color:#7f9c8a; border-top:1px solid var(--ex-line); background:#0b120d; line-height:1.6; }
+.ex-matrix-selection { display:flex; align-items:center; gap:8px; }
+.ex-matrix-footer a { color:#a3c6b5; text-decoration:underline; text-underline-offset:3px; }
 .ex-selected-indicator { display:inline-block; width:5px; height:5px; border-radius:50%; background:var(--ex-accent); flex-shrink:0; }
 .ex-tokenomics { padding:22px 23px; }
 .ex-tokenomics-heading h2 { font-size:20px; letter-spacing:-.5px; margin-top:8px; }
@@ -167,5 +178,5 @@
 @media(min-width:1100px) { .ex-settings { position:sticky; top:20px; } }
 @media(max-width:1000px) { .ex-shell { padding:0 28px; }.ex-workspace { grid-template-columns:285px minmax(0,1fr); gap:18px; }.ex-matrix-heading { flex-direction:column; gap:10px; }.ex-tokenomics dl { grid-template-columns:1fr; gap:16px; }.ex-tokenomics dl>div { display:flex; align-items:flex-start; justify-content:space-between; gap:15px; }.ex-tokenomics dd { text-align:right; }.ex-tokenomics dt { margin:3px 0 0; }.ex-tokenomics dd>span { display:inline; margin-left:5px; }.ex-table th,.ex-table td { padding-left:7px; padding-right:7px; }.ex-table tbody td { font-size:13px; } }
 @media(max-width:760px) { .ex-shell { padding:0 20px; }.ex-header { min-height:78px; }.ex-brand { gap:13px; }.ex-brand img { width:137px; height:31px; }.ex-brand>span { font-size:9px; padding-left:13px; }.ex-open { padding:10px 12px; gap:12px; }.ex-intro { padding:32px 0 27px; }.ex-page h1 { font-size:47px; letter-spacing:-2px; }.ex-status { display:none; }.ex-summary { padding:21px 22px 15px; }.ex-summary-grid { gap:25px; }.ex-summary-details { padding-left:23px; }.ex-metrics { column-gap:12px; }.ex-metrics dd { font-size:15px; }.ex-value { font-size:48px; letter-spacing:-2px; }.ex-workspace { grid-template-columns:minmax(0,1fr); gap:18px; margin-top:18px; }.ex-settings { padding:23px; }.ex-panel-heading { padding-bottom:19px; margin-bottom:20px; }.ex-presets { gap:7px; }.ex-presets button { min-height:39px; font-size:11px; }.ex-tokenomics dl { grid-template-columns:1fr 1.12fr 1fr; gap:12px; }.ex-tokenomics dl>div { display:block; }.ex-tokenomics dd { text-align:left; }.ex-tokenomics dt { margin:0 0 9px; }.ex-tokenomics dd>span { display:block; margin-left:0; }.ex-matrix-heading { flex-direction:row; }.ex-project-link { display:none; } }
-@media(max-width:480px) { .ex-shell { padding:0 15px; }.ex-header { min-height:73px; gap:12px; }.ex-brand { gap:0; }.ex-brand img { width:133px; height:30px; }.ex-brand>span { display:none; }.ex-open { font-size:10px; padding:10px 11px; gap:16px; }.ex-intro { padding:29px 0 24px; }.ex-page h1 { font-size:39px; letter-spacing:-1.8px; }.ex-page .ex-eyebrow { font-size:8px; letter-spacing:1.3px; }.ex-page .ex-intro-copy { font-size:11px; max-width:270px; margin-top:15px; }.ex-summary { padding:19px 19px 14px; border-radius:10px; }.ex-summary-top { gap:10px; font-size:9px; }.ex-summary-grid { grid-template-columns:1fr; gap:25px; padding:24px 0 20px; }.ex-value { font-size:57px; margin:9px 0 8px; }.ex-payout h2 { font-size:11px; }.ex-payout p { font-size:10px; }.ex-summary-details { border-left:0; border-top:1px solid #2b493b; padding:19px 0 0; }.ex-your-points { display:flex; align-items:center; justify-content:space-between; gap:16px; padding-bottom:16px; }.ex-your-points>span { display:block; line-height:1.8; }.ex-your-points small { display:block; }.ex-your-points strong { margin:0; font-size:27px; text-align:right; }.ex-metrics { gap:19px 22px; }.ex-metrics dd { font-size:17px; }.ex-summary-bottom { gap:7px; font-size:8px; }.ex-summary-art { top:-140px; right:-160px; }.ex-settings { padding:22px 19px 18px; }.ex-field input { font-size:16px; }.ex-field .ex-points-input { font-size:29px; }.ex-market-reference { padding:18px; }.ex-reference-heading { gap:8px; }.ex-reference-heading>div { gap:10px; }.ex-reference-status { padding:6px; font-size:8px; }.ex-reference-heading h2 { font-size:17px; }.ex-reference-note { font-size:10px; }.ex-matrix { padding:22px 16px 0; }.ex-matrix-heading { flex-direction:column; gap:12px; }.ex-matrix-heading h2 { font-size:22px; }.ex-matrix-description { font-size:9px; }.ex-table-wrap { margin:0 -5px; }.ex-table th,.ex-table td { padding:16px 6px; }.ex-table thead th { font-size:8px; }.ex-table tbody td { font-size:12px; }.ex-table tbody th button { padding:13px 5px; gap:5px; font-size:12px; min-height:59px; }.ex-table tbody th button>span { display:none; }.ex-table tbody th { width:auto; }.ex-matrix-footer { margin:0 -16px; padding:14px 16px; font-size:8px; }.ex-tokenomics { padding:20px 18px; }.ex-tokenomics dl { grid-template-columns:1fr; gap:17px; }.ex-tokenomics dl>div { display:flex; justify-content:space-between; gap:15px; }.ex-tokenomics dd { text-align:right; font-size:16px; }.ex-tokenomics dt { margin:4px 0 0; }.ex-method { padding-top:22px; margin-top:25px; }.ex-method h2 { font-size:13px; }.ex-method p { font-size:10px; }.ex-footer { font-size:7px; line-height:1.6; }.ex-header nav { gap:0; } }
+@media(max-width:480px) { .ex-shell { padding:0 15px; }.ex-header { min-height:73px; gap:12px; }.ex-brand { gap:0; }.ex-brand img { width:133px; height:30px; }.ex-brand>span { display:none; }.ex-open { font-size:10px; padding:10px 11px; gap:16px; }.ex-intro { padding:29px 0 24px; }.ex-page h1 { font-size:39px; letter-spacing:-1.8px; }.ex-page .ex-eyebrow { font-size:8px; letter-spacing:1.3px; }.ex-page .ex-intro-copy { font-size:11px; max-width:270px; margin-top:15px; }.ex-summary { padding:19px 19px 14px; border-radius:10px; }.ex-summary-top { gap:10px; font-size:9px; }.ex-summary-grid { grid-template-columns:1fr; gap:25px; padding:24px 0 20px; }.ex-value { font-size:57px; margin:9px 0 8px; }.ex-payout h2 { font-size:11px; }.ex-payout p { font-size:10px; }.ex-summary-details { border-left:0; border-top:1px solid #2b493b; padding:19px 0 0; }.ex-your-points { display:flex; align-items:center; justify-content:space-between; gap:16px; padding-bottom:16px; }.ex-your-points>span { display:block; line-height:1.8; }.ex-your-points small { display:block; }.ex-your-points strong { margin:0; font-size:27px; text-align:right; }.ex-metrics { gap:19px 22px; }.ex-metrics dd { font-size:17px; }.ex-summary-bottom { gap:7px; font-size:8px; }.ex-summary-art { top:-140px; right:-160px; }.ex-settings { padding:22px 19px 18px; }.ex-field input { font-size:16px; }.ex-field .ex-points-input { font-size:29px; }.ex-market-reference { padding:18px; }.ex-reference-heading { gap:8px; }.ex-reference-heading>div { gap:10px; }.ex-reference-status { padding:6px; font-size:8px; }.ex-reference-heading h2 { font-size:17px; }.ex-reference-note { font-size:10px; }.ex-matrix { padding:22px 16px 0; }.ex-matrix-heading { flex-direction:column; gap:12px; }.ex-matrix-heading h2 { font-size:22px; }.ex-table-wrap { margin:0 -5px; }.ex-table th,.ex-table td { padding:16px 6px; }.ex-table thead th { font-size:8px; }.ex-table tbody td { font-size:12px; }.ex-table tbody th button { padding:13px 5px; gap:5px; font-size:12px; min-height:59px; }.ex-table tbody th button>span { display:none; }.ex-table tbody th { width:auto; }.ex-matrix-footer { margin:0 -16px; padding:14px 16px; font-size:8px; }.ex-tokenomics { padding:20px 18px; }.ex-tokenomics dl { grid-template-columns:1fr; gap:17px; }.ex-tokenomics dl>div { display:flex; justify-content:space-between; gap:15px; }.ex-tokenomics dd { text-align:right; font-size:16px; }.ex-tokenomics dt { margin:4px 0 0; }.ex-method { padding-top:22px; margin-top:25px; }.ex-method h2 { font-size:13px; }.ex-method p { font-size:10px; }.ex-footer { font-size:7px; line-height:1.6; }.ex-header nav { gap:0; } }
 @media(prefers-reduced-motion:reduce) { .ex-page *,.ex-page *::before,.ex-page *::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }

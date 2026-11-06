@@ -18,17 +18,17 @@ black background and teal `#00BC84` accent from https://extended.exchange/.
 The app reference itself returned HTTP 403 during development, so the public
 official website and the supplied points image were used for visual reference.
 
-Inputs are manual Xpoints, editable total points (default **70,000,000** from
-https://docs.extended.exchange/extended-resources/points-program), and manual FDV
-(starting scenario **$500M**). The supplied **1B XTEN genesis supply** and
-**300M XTEN / 30% community allocation** are fixed model inputs. Values assume
-proportional conversion; no eligibility or final conversion ratio is inferred.
-The summary shows USD value, XTEN quantity, pool share and value per point; the
-FDV table updates the same calculation. Settings persist separately under
+Inputs are manual Xpoints and FDV (starting scenario **$500M**). Extended's
+[published conversion](https://t.me/extended_updates/395) is approximately
+**4.2857 XTEN per Xpoint**, calculated from **300M XTEN** and **70M Xpoints**.
+The XTEN estimate updates as Xpoints are entered. The summary and FDV table
+value that quantity at **FDV ÷ 1B XTEN**. Settings persist separately under
 `extended-estimate-v1`, preserving Arcus and TxFlow settings.
 The table appears above Polymarket and uses its thresholds through $1B:
 **$150M, $250M, $300M, $500M, $800M, $1B**. The FDV preset buttons use the same values.
-Manual values remain editable without adding rows outside this fixed grid.
+The Hyperliquid row refreshes every minute using the XTEN perpetual mark price
+from its public API. Its implied FDV uses the same **1B XTEN** supply. Selecting
+the row applies the quoted FDV at that time. Manual values remain editable.
 
 Polymarket FDV is loaded through the server-only Heisenberg integration at
 `GET /api/extended/fdv`. Put `HEISENBERG_API_KEY` in the ignored `.env.local`

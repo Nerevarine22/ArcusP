@@ -191,12 +191,14 @@ export function normalizeTxFunding(value: unknown): TxFunding {
   return { key: `${market}:${time}:${String(row.szi ?? "")}`, market, time, amount: valueUsd };
 }
 
-export async function collectTxHistory<T extends { key: string; time: number }>(fetchPage: (offset: number) => Promise<unknown>, normalize: (row: unknown) => T, options: { from: number | null; to: number; limit: number; maxPages: number }): Promise<TxScan<T>> {
+export async function collectTxHistory<T extends { key: string; time: number }>(fetchPage: (offset: number, endTimeMs: number) => Promise<unknown>, normalize: (row: unknown) => T, options: { from: number | null; to: number; limit: number; maxPages: number }): Promise<TxScan<T>> {
   const rows: T[] = [], seen = new Map<string, string>(); let pages = 0, offset = 0, expectedTotal: number | null = null;
+  let endTimeMs = options.to, oldest = options.to, timePagination = false, newestFirst = true;
+  const windowKeys = new Set<string>();
   const finish = (status: TxScan<T>["status"], warning?: string): TxScan<T> => ({ rows, pages, status, warnings: warning ? [warning] : [] });
   try {
     while (pages < options.maxPages) {
-      const page = unwrapTxflow(await fetchPage(offset)); pages++;
+      const page = unwrapTxflow(await fetchPage(offset, endTimeMs)); pages++;
       if (!Array.isArray(page.data) || page.data.length > options.limit || typeof page.hasMore !== "boolean") throw new Error("Unexpected paged TxFlow history response.");
       if (page.total !== undefined) {
         const total = Number(page.total);
@@ -204,19 +206,35 @@ export async function collectTxHistory<T extends { key: string; time: number }>(
         if (expectedTotal !== null && expectedTotal !== total) return finish("partial", "Indexed history changed during pagination. Refresh to reconcile it.");
         expectedTotal = total;
       }
-      let added = 0;
+      let added = 0, previousTime = endTimeMs;
       for (const raw of page.data) {
         const row = normalize(raw);
-        if (row.time > options.to || (options.from !== null && row.time < options.from)) throw new Error("TxFlow returned history outside the requested period.");
+        if (row.time > endTimeMs || (options.from !== null && row.time < options.from)) throw new Error("TxFlow returned history outside the requested period.");
+        if (row.time > previousTime) newestFirst = false;
+        previousTime = row.time;
+        oldest = Math.min(oldest, row.time);
         const signature = JSON.stringify(row), previous = seen.get(row.key);
         if (previous && previous !== signature) throw new Error("A TxFlow history row changed during pagination.");
-        if (!previous) { rows.push(row); seen.set(row.key, signature); added++; }
+        if (!previous) { rows.push(row); seen.set(row.key, signature); }
+        if (!windowKeys.has(row.key)) { windowKeys.add(row.key); added++; }
       }
       if (!page.hasMore) {
-        if (expectedTotal !== null && expectedTotal !== rows.length) return finish("partial", "The indexed history count does not match the rows returned. Refresh to reconcile it.");
+        if (expectedTotal !== null && expectedTotal !== windowKeys.size) return finish("partial", "The indexed history count does not match the rows returned. Refresh to reconcile it.");
         return finish("complete");
       }
-      if (!added) return finish("partial", "TxFlow history pagination stopped advancing.");
+      if (!page.data.length) return finish("partial", "TxFlow returned an empty history page while reporting more records.");
+      if (!added) timePagination = true;
+      if (timePagination && oldest < endTimeMs) {
+        if (!newestFirst) return finish("partial", "TxFlow history is not ordered newest first. Full history could not be verified.");
+        // Re-read the inclusive oldest millisecond to retain every fill in a tied timestamp.
+        // The provider's capped total applies to this new window, not the whole history.
+        endTimeMs = oldest;
+        offset = 0;
+        expectedTotal = null;
+        windowKeys.clear();
+        continue;
+      }
+      if (!added) return finish("partial", "TxFlow history pagination stopped advancing at a shared timestamp. Full history could not be verified.");
       offset += page.data.length;
     }
     return finish("partial", "History scan limit reached. Choose a shorter period.");

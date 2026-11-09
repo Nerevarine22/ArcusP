@@ -107,6 +107,84 @@ test('deduplication keeps both execution legs of a self-trade', async () => {
   assert.equal(summarizeTxFills(result.rows).volume,'1300.21');
 });
 
+test('capped offsets recover earlier history through inclusive time windows without losing tied fills', async () => {
+  const history = [1,2,3,4,5,6].map((tid,index) => rawFill({tid:String(tid),time:asOf-[1,1,2,2,3,4][index]}));
+  const requests = [];
+  const result = await collectTxHistory(async (offset,endTimeMs) => {
+    requests.push({offset,endTimeMs});
+    const remaining = history.filter(row => row.time <= endTimeMs);
+    // Reproduce a capped index that ignores offset and reports only the capped count.
+    return page(remaining.slice(0,3),remaining.length > 3,Math.min(3,remaining.length));
+  },normalizeTxFill,{...options,limit:3,maxPages:10});
+  assert.equal(result.status,'complete');
+  assert.equal(result.rows.length,history.length);
+  assert.equal(summarizeTxFills(result.rows).volume,'3900.63');
+  assert.deepEqual(result.warnings,[]);
+  assert.deepEqual(requests.map(request => request.endTimeMs),[asOf,asOf,asOf-2,asOf-3]);
+  assert.equal(new Set(result.rows.map(row => row.key)).size,history.length);
+});
+
+test('time-window fallback retains all funding settlements and reconciles their amounts', async () => {
+  const history = [
+    {coin:'BTC',time:asOf-1,amount:'1'},
+    {coin:'ETH',time:asOf-1,amount:'-2'},
+    {coin:'SOL',time:asOf-2,amount:'0.5'},
+    {coin:'BTC',time:asOf-2,amount:'0.25'},
+  ];
+  const result = await collectTxHistory(async (_offset,endTimeMs) => {
+    const remaining = history.filter(row => row.time <= endTimeMs);
+    return page(remaining.slice(0,3),remaining.length > 3,Math.min(3,remaining.length));
+  },normalizeTxFunding,{...options,limit:3,maxPages:10});
+  assert.equal(result.status,'complete');
+  assert.deepEqual(summarizeTxFunding(result.rows),{paid:'2',received:'1.75',net:'-0.25',count:4});
+});
+
+test('time-window fallback uses offsets when several executions share the cutoff millisecond', async () => {
+  const history = [1,2,3,4,5].map(tid => rawFill({tid:String(tid),time:asOf-1}));
+  let calls = 0;
+  const result = await collectTxHistory(async (offset,endTimeMs) => {
+    calls++;
+    if (calls <= 2) return page(history.slice(0,2),true);
+    const remaining = history.filter(row => row.time <= endTimeMs);
+    return page(remaining.slice(offset,offset+2),offset+2 < remaining.length,remaining.length);
+  },normalizeTxFill,{...options,maxPages:10});
+  assert.equal(result.status,'complete');
+  assert.equal(result.rows.length,5);
+});
+
+test('a saturated shared millisecond or an ignored time bound cannot claim complete history', async () => {
+  const tied = [rawFill({tid:'1'}),rawFill({tid:'2'})];
+  const stalled = await collectTxHistory(async () => page(tied,true),normalizeTxFill,{...options,maxPages:10});
+  assert.equal(stalled.status,'partial');
+  assert.match(stalled.warnings[0],/shared timestamp/);
+  assert.equal(stalled.rows.length,2);
+  assert.equal(stalled.pages,4);
+
+  const history = [rawFill({tid:'1',time:asOf-1}),rawFill({tid:'2',time:asOf-2})];
+  const ignored = await collectTxHistory(async () => page(history,true),normalizeTxFill,{...options,maxPages:10});
+  assert.equal(ignored.status,'partial');
+  assert.match(ignored.warnings[0],/outside the requested period/);
+  assert.equal(ignored.rows.length,2);
+});
+
+test('time-window fallback enforces the selected start and shares the original page budget', async () => {
+  const history = [1,2,3,4].map(tid => rawFill({tid:String(tid),time:asOf-tid}));
+  const requests = [];
+  const result = await collectTxHistory(async (offset,endTimeMs) => {
+    requests.push({offset,endTimeMs});
+    const remaining = history.filter(row => row.time >= asOf-3 && row.time <= endTimeMs);
+    return page(remaining.slice(0,2),remaining.length > 2,Math.min(2,remaining.length));
+  },normalizeTxFill,{...options,from:asOf-3,maxPages:10});
+  assert.equal(result.status,'complete');
+  assert.equal(result.rows.length,3);
+  assert.ok(requests.every(request => request.endTimeMs >= asOf-3));
+
+  const capped = await collectTxHistory(async () => page(history.slice(0,2),true),normalizeTxFill,{...options,maxPages:2});
+  assert.equal(capped.status,'partial');
+  assert.match(capped.warnings[0],/limit/);
+  assert.equal(capped.pages,2);
+});
+
 test('stalls, changed counts, missing pages and malformed rows cannot produce complete totals', async () => {
   const stalled = await collectTxHistory(async () => page([rawFill()],true),normalizeTxFill,options);
   assert.equal(stalled.status,'partial');

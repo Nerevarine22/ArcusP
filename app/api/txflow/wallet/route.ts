@@ -42,18 +42,19 @@ export async function POST(request: NextRequest) {
       throw error;
     }
   }
-  const options = { from, to, limit: 1000, maxPages: 20 };
+  // The live index caps pages at 300 rows. Allow enough windows for the previous scan capacity.
+  const options = { from, to, limit: 300, maxPages: 80 };
   const historyRequest = { user: address, accountType: ["perp"], endTimeMs: to, limit: options.limit, ...(from === null ? {} : { startTimeMs: from }) };
-  const fillsPromise = collectTxHistory(offset => read({ ...historyRequest, type: "userFills", offset }), normalizeTxFill, options);
+  const fillsPromise = collectTxHistory((offset, endTimeMs) => read({ ...historyRequest, type: "userFills", offset, endTimeMs }), normalizeTxFill, options);
   const priorPromise = fillsPromise.then(scan => {
     const empty: TxScan<TxFill> = { rows: [], pages: 0, status: "complete", warnings: [] };
     if (from === null || scan.status !== "complete" || scan.rows.length === 0) return empty;
-    return collectTxHistory(offset => read({ type: "userFills", user: address, accountType: ["perp"], endTimeMs: from - 1, limit: options.limit, offset }), normalizeTxFill,
+    return collectTxHistory((offset, endTimeMs) => read({ type: "userFills", user: address, accountType: ["perp"], endTimeMs, limit: options.limit, offset }), normalizeTxFill,
       { ...options, from: null, to: from - 1, maxPages: Math.max(0, options.maxPages - scan.pages) });
   });
   const [fillScan, fundingScan, overviewResult, accountResult, priorScan] = await Promise.all([
     fillsPromise,
-    collectTxHistory(offset => read({ ...historyRequest, type: "userFundings", offset }), normalizeTxFunding, options),
+    collectTxHistory((offset, endTimeMs) => read({ ...historyRequest, type: "userFundings", offset, endTimeMs }), normalizeTxFunding, options),
     !["ALLTIME", "24H", "7D", "30D", "90D"].includes(period) ? Promise.resolve({ data: null, error: null }) : read({ type: "userOverview", user_address: address, period }).then(value => ({ data: normalizeTxOverview(value, period), error: null })).catch((error: unknown) => ({ data: null, error: error instanceof Error ? error.message : "Account overview is unavailable." })),
     read({ type: "clearinghouseState", user: address, accountType: "perp" }).then(value => ({ data: normalizeTxAccount(value), error: null })).catch((error: unknown) => ({ data: null, error: error instanceof Error ? error.message : "Open positions are unavailable." })),
     priorPromise,

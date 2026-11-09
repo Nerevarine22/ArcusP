@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { txflowAwardedEpochs, txflowCurrentEpoch, txflowPointsStatus, txflowReceivedEpochs, txflowEpochIds, txflowPeriodRange, txflowSelectionWindows, txflowInWindows, summarizeTxFills, summarizeTxFunding, analyzeTxHolding, buildTxEpochReport, buildTxEpochReports, normalizeTxFill, parseTxflowWalletSettings } from '../lib/txflow-wallet.ts';
+import { TXFLOW_EPOCHS, txflowAwardedEpochs, txflowCurrentEpoch, txflowPointsStatus, txflowReceivedEpochs, txflowEpochIds, txflowPeriodRange, txflowSelectionWindows, txflowInWindows, summarizeTxFills, summarizeTxFunding, analyzeTxHolding, buildTxEpochReport, buildTxEpochReports, normalizeTxFill, parseTxflowWalletSettings } from '../lib/txflow-wallet.ts';
 
 const at = value => Date.parse(value);
 const today = at('2026-10-26T18:00:00Z'), afterDistribution = at('2026-10-28T12:00:00Z');
-const start = at('2026-10-12T00:00:00Z'), split = at('2026-10-20T00:00:00Z'), end = at('2026-10-27T00:00:00Z');
+const start = at('2026-10-12T00:00:00Z'), split = at('2026-10-19T00:00:00Z'), end = at('2026-10-26T00:00:00Z');
 const scan = { fillsStatus:'complete', fundingStatus:'complete', historyStatus:'complete', historyPages:2 };
 let sequence = 0;
 const fill = (time, side='B', startPosition='0') => normalizeTxFill({instrumentId:'1',tid:String(++sequence),oid:String(sequence),symbol:'BTC-USDC',instrumentType:'perps',marginMode:'Cross',tradeSide:'Maker',side,sz:'1',px:'100',fee:'0.01',feeToken:'USDC',closedPnl:'0',time,startPosition});
@@ -16,6 +16,35 @@ test('explicit epoch boundaries include the entire final day without overlap or 
     assert.deepEqual(['S0','EPOCH_1','EPOCH_2'].filter(id => txflowInWindows(time,[txflowPeriodRange(id,afterDistribution)])),[expected]);
   }
   assert.equal(txflowInWindows(end,[two]),false);
+});
+
+test('every configured S1 epoch starts on Monday, lasts seven days, and drops points on Tuesday', () => {
+  for (const [id,epoch] of Object.entries(TXFLOW_EPOCHS).filter(([id]) => id !== 'S0')) {
+    const from = at(epoch.start), to = at(epoch.end);
+    assert.equal(new Date(from).getUTCDay(),1);
+    assert.equal(new Date(to).getUTCDay(),1);
+    assert.equal(to-from,7*86400000);
+    assert.equal(at(epoch.distribution+'T00:00:00Z')-to,86400000);
+    assert.deepEqual(txflowPeriodRange(id,from),{from,to:from,endExclusive:false});
+    assert.equal(txflowCurrentEpoch(from).id,id);
+  }
+});
+
+test('Epoch IV and V roll over on 9 November midnight UTC, independently of Tuesday distribution', () => {
+  const boundary = at('2026-11-09T00:00:00Z');
+  const fourth = txflowCurrentEpoch(boundary-1), fifth = txflowCurrentEpoch(boundary);
+  assert.equal(fourth.id,'EPOCH_4');
+  assert.equal(fourth.range.from,at('2026-11-02T00:00:00Z'));
+  assert.equal(fifth.id,'EPOCH_5');
+  assert.equal(fifth.range.from,boundary);
+  const displayed = txflowCurrentEpoch(at('2026-11-09T11:12:00Z'));
+  assert.equal(displayed.id,'EPOCH_5');
+  // Matches the live overview's currentEpochEndsAt, the final millisecond of Sunday.
+  assert.equal(displayed.range.from+7*86400000-1,at('2026-11-15T23:59:59.999Z'));
+  const fills = [fill(boundary-1),fill(boundary)];
+  const report = buildTxEpochReport(fills,[],displayed,scan);
+  assert.equal(report.summary.fills,1);
+  assert.equal(report.summary.volume,'100');
 });
 
 test('awarded defaults follow distribution dates without changing epoch boundaries', () => {
@@ -41,7 +70,7 @@ test('awarded-only totals follow the selected epochs and exclude other fees and 
   const funding = fills.map((row,index) => ({key:String(index),time:row.time,market:row.market,amount:'1'}));
   assert.equal(summarizeTxFunding(funding.filter(row => txflowInWindows(row.time,windows))).count,2);
   assert.equal(fills.filter(row => txflowInWindows(row.time,txflowSelectionWindows('ALLTIME',today))).length,5);
-  assert.deepEqual(txflowEpochIds('S1',['EPOCH_1'],today),['EPOCH_1','EPOCH_2']);
+  assert.deepEqual(txflowEpochIds('S1',['EPOCH_1'],today),['EPOCH_1','EPOCH_2','EPOCH_3']);
 });
 
 test('non-contiguous awarded windows preserve FIFO context but exclude gap execution volume', () => {
@@ -64,7 +93,7 @@ test('epoch reports reconcile individually and a later close never rewrites earl
   assert.deepEqual(reports[0].holding,earlier.holding);
   const unavailable = buildTxEpochReports([],[],['EPOCH_1'],today,{...scan,fillsStatus:'unavailable',fundingStatus:'unavailable'})[0];
   assert.equal(unavailable.summary,null); assert.equal(unavailable.funding,null);
-  assert.equal(buildTxEpochReports([],[],['EPOCH_2'],today,scan)[0].completed,false);
+  assert.equal(buildTxEpochReports([],[],['EPOCH_2'],today,scan)[0].completed,true);
 });
 
 test('each epoch keeps its own maker, taker and unknown fees, including rebates', () => {
@@ -93,7 +122,7 @@ test('wallet settings migrate old saved inputs and retain distinct per-wallet ep
 });
 
 test('Epoch 3 enters awarded totals on 3 November and excludes subsequent trading', () => {
-  const distributed=at('2026-11-03T12:00:00Z'), cutoff=at('2026-11-03T00:00:00Z');
+  const distributed=at('2026-11-03T12:00:00Z'), cutoff=at('2026-11-02T00:00:00Z');
   const address='0x4c4e9818925a5bdaf5f50944ffbe9d297e58563b';
   const ids=['S0','EPOCH_1','EPOCH_2','EPOCH_3'];
   assert.deepEqual(txflowAwardedEpochs(undefined,distributed),ids);
@@ -113,12 +142,12 @@ test('Epoch 3 enters awarded totals on 3 November and excludes subsequent tradin
 });
 
 test('the current epoch has its own activity and rolls forward without entering awarded totals', () => {
-  const cutoff = at('2026-11-03T00:00:00Z'), now = at('2026-11-05T12:00:00Z');
+  const cutoff = at('2026-11-02T00:00:00Z'), now = at('2026-11-05T12:00:00Z');
   const current = txflowCurrentEpoch(now);
   assert.equal(current.id, 'EPOCH_4');
   assert.deepEqual(current.range, { from: cutoff, to: now, endExclusive: false });
   assert.equal(txflowCurrentEpoch(cutoff - 1).id, 'EPOCH_3');
-  assert.equal(txflowCurrentEpoch(at('2026-11-10T00:00:00Z')).id, 'EPOCH_5');
+  assert.equal(txflowCurrentEpoch(at('2026-11-09T00:00:00Z')).id, 'EPOCH_5');
   assert.throws(() => txflowAwardedEpochs([current.id], now));
 
   const fills = [fill(cutoff - 1), { ...fill(cutoff, 'A', '1'), role: 'Taker' }, fill(now + 1)];

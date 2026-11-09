@@ -185,9 +185,11 @@ Points are entered at the top beside the wallet and analysis scope. Three main v
 - **All available history**: all indexed activity, including ongoing or unawarded
   periods. Ratios are calculated per matching epoch, not against an incomplete total.
 
-Explicit UTC windows are S0 before 12 October 2026; S1 Epoch 1 from 12 October
-00:00 through 19 October 23:59:59.999; S1 Epoch 2 from 20 October 00:00 through
-26 October 23:59:59.999. RPC upper bounds exclude the next day's midnight.
+S0 covers activity before 12 October 2026. S1 trading windows run Monday 00:00
+to the following Monday 00:00 UTC, with the end excluded. Epoch 1 covers
+12–18 October, Epoch 2 covers 19–25 October, and Epoch 3 covers 26 October–1 November.
+Later weekly windows continue from the same Monday boundary. Tuesday point
+distributions are separate from the trading cutoff.
 Epoch 1 was distributed on 20 October. For the requested local preview, S0 and Epoch 2
 are marked distributed on 27 October and included by default. Scans still stop
 at the actual current time; future executions are never invented. Dates alone never mark unconfigured distributions received. Users confirm **Points received** after

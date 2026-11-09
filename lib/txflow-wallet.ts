@@ -1,13 +1,13 @@
 import type { ResearchStatus } from "./research-data";
 
-// Distribution dates use UTC; trading windows are half-open.
+// Trading weeks run Monday 00:00 to Monday 00:00 UTC; points are distributed on Tuesday.
 export const TXFLOW_EPOCHS = {
   S0: { label: "Season 0", start: null, end: "2026-10-12T00:00:00.000Z", dates: "Before 12 October 2026", distribution: "2026-10-27", distributed: true },
-  EPOCH_1: { label: "S1 · Epoch 1", start: "2026-10-12T00:00:00.000Z", end: "2026-10-20T00:00:00.000Z", dates: "12–19 October 2026", distribution: "2026-10-20", distributed: true },
-  EPOCH_2: { label: "S1 · Epoch 2", start: "2026-10-20T00:00:00.000Z", end: "2026-10-27T00:00:00.000Z", dates: "20–26 October 2026", distribution: "2026-10-27", distributed: true },
-  EPOCH_3: { label: "S1 · Epoch 3", start: "2026-10-27T00:00:00.000Z", end: "2026-11-03T00:00:00.000Z", dates: "27 October – 2 November 2026", distribution: "2026-11-03", distributed: true },
+  EPOCH_1: { label: "S1 · Epoch 1", start: "2026-10-12T00:00:00.000Z", end: "2026-10-19T00:00:00.000Z", dates: "12–18 October 2026", distribution: "2026-10-20", distributed: true },
+  EPOCH_2: { label: "S1 · Epoch 2", start: "2026-10-19T00:00:00.000Z", end: "2026-10-26T00:00:00.000Z", dates: "19–25 October 2026", distribution: "2026-10-27", distributed: true },
+  EPOCH_3: { label: "S1 · Epoch 3", start: "2026-10-26T00:00:00.000Z", end: "2026-11-02T00:00:00.000Z", dates: "26 October – 1 November 2026", distribution: "2026-11-03", distributed: true },
 };
-export const TXFLOW_PERIODS = { AWARDED: "Awarded epochs only", S1: "Season 1 · Epochs 1–3", S0: "S0 · Before 12 Oct 2026", EPOCH_1: "S1 · Epoch 1 · 12–19 Oct", EPOCH_2: "S1 · Epoch 2 · 20–26 Oct", EPOCH_3: "S1 · Epoch 3 · 27 Oct–2 Nov", ALLTIME: "All available history", "24H": "Last 24 hours", "7D": "Last 7 days", "30D": "Last 30 days", "90D": "Last 90 days" };
+export const TXFLOW_PERIODS = { AWARDED: "Awarded epochs only", S1: "Season 1 · Epochs 1–3", S0: "S0 · Before 12 Oct 2026", EPOCH_1: "S1 · Epoch 1 · 12–18 Oct", EPOCH_2: "S1 · Epoch 2 · 19–25 Oct", EPOCH_3: "S1 · Epoch 3 · 26 Oct–1 Nov", ALLTIME: "All available history", "24H": "Last 24 hours", "7D": "Last 7 days", "30D": "Last 30 days", "90D": "Last 90 days" };
 export type TxflowEpochId = keyof typeof TXFLOW_EPOCHS;
 export type TxflowReportEpochId = TxflowEpochId | `EPOCH_${number}`;
 export type TxflowPeriod = keyof typeof TXFLOW_PERIODS;
@@ -40,7 +40,7 @@ export const txflowEpochDistributed = (id: TxflowEpochId, now: number) => TXFLOW
 export const txflowDefaultAwarded = (now = Date.now()): TxflowEpochId[] => (Object.keys(TXFLOW_EPOCHS) as TxflowEpochId[]).filter(id => txflowEpochDistributed(id, now));
 export function txflowEpochRange(id: TxflowEpochId, now: number): TxflowWindow {
   const epoch = TXFLOW_EPOCHS[id], from = epoch.start === null ? null : Date.parse(epoch.start), end = Date.parse(epoch.end);
-  if (from !== null && now <= from) throw new Error("This points epoch has not started yet.");
+  if (from !== null && now < from) throw new Error("This points epoch has not started yet.");
   return { from, to: Math.min(end, now), endExclusive: now >= end };
 }
 export function txflowAwardedEpochs(value: unknown, now: number): TxflowEpochId[] {

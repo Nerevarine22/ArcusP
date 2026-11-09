@@ -177,7 +177,9 @@ export function mergeResearchWallet(previous: ResearchWallet | null, incoming: R
       result.periods[id] = !newer && !sameProfile ? withResearchRatios({ ...next, points: { ...next.points, value: null, status: "missing" } }) : next;
       continue;
     }
-    const preferNext = quality(next) > quality(old) || (quality(next) === quality(old) && Date.parse(next.observedAt) >= Date.parse(old.observedAt));
+    const sameWindow = old.start === next.start && old.end === next.end;
+    const preferNext = sameWindow && quality(next) !== quality(old)
+      ? quality(next) > quality(old) : Date.parse(next.observedAt) >= Date.parse(old.observedAt);
     const trade = preferNext ? next : old;
     // Unknown points from a later empty input never erase previously supplied values.
     const reward = !newer && !sameProfile ? old.points : newer && !sameProfile ? next.points

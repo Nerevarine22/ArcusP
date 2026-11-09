@@ -83,6 +83,30 @@ test('upserts deduplicate epochs, retain full analysis under partial scans, and 
   assert.throws(() => mergeResearchWallet(original, { ...original, project: 'arcus' }), /different/);
 });
 
+test('corrected epoch windows replace legacy trading metrics while retaining points and rejecting stale scans', () => {
+  const legacy = txflowResearch(txReport(), { EPOCH_1:'10',EPOCH_2:'20' }, null, TXFLOW_EPOCHS);
+  legacy.periods['s1-epoch-1'].end = '2026-10-20T00:00:00.000Z';
+  legacy.periods['s1-epoch-2'].start = '2026-10-20T00:00:00.000Z';
+  const report = txReport();
+  report.fetchedAt = '2026-11-09T11:12:00.000Z';
+  report.fillsScan.status = 'partial';
+  report.fundingScan.status = 'partial';
+  report.epochs[1].summary.volume = '150';
+  report.epochs[1].holding.status = 'incomplete';
+  const corrected = mergeResearchWallet(legacy,txflowResearch(report,{},null,TXFLOW_EPOCHS));
+  const one = corrected.periods['s1-epoch-1'], two = corrected.periods['s1-epoch-2'];
+  assert.equal(one.end,'2026-10-19T00:00:00.000Z');
+  assert.equal(one.summary.volumeUsd,'150');
+  assert.equal(one.points.value,'10');
+  assert.equal(one.fillsComplete,false);
+  assert.equal(one.fundingComplete,false);
+  assert.equal(one.eligibleForPointsComparison,false);
+  assert.equal(two.start,'2026-10-19T00:00:00.000Z');
+  assert.equal(two.points.value,'20');
+  const late = mergeResearchWallet(corrected,legacy);
+  assert.deepEqual(late.periods,corrected.periods);
+});
+
 test('changed Arcus profile clears previous claimed points; blank and stale profiles do not corrupt an existing association', () => {
   const original = arcusResearch(arcusReport(), 'Alice', arcusPoints);
   const next = arcusReport(); next.fetchedAt = '2026-10-29T12:00:00Z';

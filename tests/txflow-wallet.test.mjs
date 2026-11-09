@@ -22,20 +22,20 @@ test('S0 covers all earlier history without overlapping S1 Epoch 1, with manuall
   assert.equal(wrongSeason.status,'unavailable');
 });
 
-test('Epoch 1 is the fixed UTC window including all of Monday 19 October, independent of the current rolling week', () => {
+test('Epoch 1 is a seven-day Monday-to-Monday UTC window, independent of the current rolling week', () => {
   const range = txflowPeriodRange('EPOCH_1',asOf);
   assert.equal(new Date(range.from).toISOString(),'2026-10-12T00:00:00.000Z');
-  assert.equal(new Date(range.to).toISOString(),'2026-10-20T00:00:00.000Z');
+  assert.equal(new Date(range.to).toISOString(),'2026-10-19T00:00:00.000Z');
   assert.equal(new Date(range.from).getUTCDay(),1);
-  assert.equal(new Date(range.to).getUTCDay(),2);
-  assert.equal(range.to-range.from,8*86400000);
+  assert.equal(new Date(range.to).getUTCDay(),1);
+  assert.equal(range.to-range.from,7*86400000);
   assert.equal(range.endExclusive,true);
   assert.notEqual(range.from,txflowPeriodRange('7D',asOf).from);
   assert.deepEqual(txflowPeriodRange('ALLTIME',asOf),{from:null,to:asOf,endExclusive:false});
   assert.throws(()=>txflowPeriodRange('EPOCH_1',range.from-1),/not started/);
 });
 
-test('epoch history includes opening Monday and the final millisecond, excluding 20 October midnight', async () => {
+test('epoch history includes opening Monday and the final millisecond, excluding the next Monday midnight', async () => {
   const range = txflowPeriodRange('EPOCH_1',asOf), epochOptions = {...options,from:range.from,to:range.to-1};
   const rows = [rawFill({time:range.from}),rawFill({tid:'2',time:range.to-1})];
   const complete = await collectTxHistory(async () => page(rows,false,2),normalizeTxFill,epochOptions);

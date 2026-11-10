@@ -49,6 +49,9 @@
 .hub-project-risex { --project-accent:#03de82; }
 .hub-project-risex .hub-project-cover { background:radial-gradient(ellipse at 75% 36%,#0b3021,#070e0b 70%); color:var(--project-accent); }
 .hub-project-risex .hub-cover-art>img { opacity:.2; }
+.hub-project-jumper { --project-accent:#b49bda; }
+.hub-project-jumper .hub-project-cover { color:#b49bda; background:radial-gradient(ellipse at 85% 15%,#542c67,#1a1128 75%); }
+.hub-project-jumper .hub-cover-art>img { width:235px; height:235px; top:8px; right:3px; opacity:.22; }
 .hub-project-top { position:absolute; top:24px; left:25px; right:25px; display:flex; align-items:center; justify-content:space-between; gap:10px; z-index:1; font-size:8px; letter-spacing:1.1px; }
 .hub-project-top>span:first-child { color:#fff9; }
 .hub-project-status { display:flex; align-items:center; gap:6px; color:#fffc; letter-spacing:0; font-size:9px; }

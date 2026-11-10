@@ -77,4 +77,13 @@ export const projects: Project[] = [
     href: "/extended",
     website: EXTENDED_REFERRAL_URL,
   },
+  {
+    id: "jumper",
+    name: "Jumper",
+    status: "available",
+    description: "Check wallet XP and compare estimated allocations across FDV and eligibility scenarios.",
+    tools: ["Points calculator"],
+    href: "/jumper",
+    website: "https://jumper.xyz/",
+  },
 ];

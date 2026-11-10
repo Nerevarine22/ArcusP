@@ -13,6 +13,7 @@ function Arrow({ diagonal = false }: { diagonal?: boolean }) {
 }
 
 function ProjectArtwork({ id }: { id: string }) {
+  if (id === "jumper") return <div className="hub-cover-art" aria-hidden="true"><svg viewBox="0 0 380 240" fill="none">{[0, 1, 2, 3].map(index => <circle key={index} cx="295" cy="82" r={70 + index * 35} stroke="currentColor" strokeWidth=".7" />)}</svg><img src="/brand/jumper/symbol.svg" alt="" width="200" height="200" /></div>;
   if (id === "risex") return <div className="hub-cover-art" aria-hidden="true"><svg viewBox="0 0 380 240" fill="none">{[0, 1, 2, 3, 4, 5, 6, 7].map(index => <path key={index} d={`M${index * 50 + 15} 0v240M0 ${index * 50 + 15}h380`} stroke="currentColor" strokeWidth=".7" />)}{[0, 1, 2, 3].map(index => <rect key={index} x={163 + index * 50} y={63 + index * 50} width="4" height="4" fill="currentColor" />)}</svg><img src="/brand/risex/symbol.svg" alt="" width="200" height="200" /></div>;
   if (id === "bulk") return <div className="hub-cover-art" aria-hidden="true"><svg viewBox="0 0 380 240" fill="none">{[0, 1, 2, 3].map(index => <circle key={index} cx="280" cy="110" r={65 + index * 28} stroke="currentColor" strokeWidth=".7" />)}</svg><img src="/brand/bulk/symbol.svg" alt="" width="200" height="200" /></div>;
   if (id === "entropy") return <div className="hub-cover-art" aria-hidden="true"><svg viewBox="0 0 380 240" fill="none">{[0,1,2,3,4,5,6].map(index=><path key={index} d={`M${index*45-30} 0v240M0 ${index*45-30}h380`} stroke="currentColor" strokeWidth=".5" />)}</svg><img src="/brand/entropy/symbol.svg" alt="" width="200" height="160" /></div>;
@@ -48,7 +49,7 @@ export default async function Page() {
         <div className="hub-list-heading"><h2 id="projects-heading">Choose your exchange</h2><span>YOUR NEXT PERSPECTIVE <Arrow /></span></div>
         <div className="hub-project-grid">{projects.map((project, index) => {
           const live = project.status === "available" && project.href;
-          const wordmark = project.id === "arcus" ? "/brand/arcus-logo-cream.svg" : ["txflow", "extended", "variational", "bulk", "risex"].includes(project.id) ? `/brand/${project.id}/logo.svg` : null;
+          const wordmark = project.id === "arcus" ? "/brand/arcus-logo-cream.svg" : ["txflow", "extended", "variational", "bulk", "risex", "jumper"].includes(project.id) ? `/brand/${project.id}/logo.svg` : null;
           return <article className={`hub-project hub-project-${project.id}`} key={project.id} aria-labelledby={`hub-project-${project.id}`} style={{ animationDelay: `${index * 70}ms` }}>
             <div className="hub-project-cover">
               <ProjectArtwork id={project.id} />

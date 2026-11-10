@@ -5,7 +5,7 @@ import NumberTransition from "@/components/number-transition";
 import RisexHeader from "@/components/risex-header";
 import { estimate, parsePoints } from "@/lib/estimator";
 
-const fdvScenarios = [250e3, 300e6, 500e6, 800e6, 1e9];
+const fdvScenarios = [250e6, 300e6, 500e6, 800e6, 1e9];
 const allocationScenarios = [15, 20, 25, 30];
 const poolScenarios = [9e6, 10e6, 12e6];
 const [lowPool, , highPool] = poolScenarios;

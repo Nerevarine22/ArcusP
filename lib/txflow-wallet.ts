@@ -6,8 +6,9 @@ export const TXFLOW_EPOCHS = {
   EPOCH_1: { label: "S1 · Epoch 1", start: "2026-10-12T00:00:00.000Z", end: "2026-10-19T00:00:00.000Z", dates: "12–18 October 2026", distribution: "2026-10-20", distributed: true },
   EPOCH_2: { label: "S1 · Epoch 2", start: "2026-10-19T00:00:00.000Z", end: "2026-10-26T00:00:00.000Z", dates: "19–25 October 2026", distribution: "2026-10-27", distributed: true },
   EPOCH_3: { label: "S1 · Epoch 3", start: "2026-10-26T00:00:00.000Z", end: "2026-11-02T00:00:00.000Z", dates: "26 October – 1 November 2026", distribution: "2026-11-03", distributed: true },
+  EPOCH_4: { label: "S1 · Epoch 4", start: "2026-11-02T00:00:00.000Z", end: "2026-11-09T00:00:00.000Z", dates: "2–8 November 2026", distribution: "2026-11-10", distributed: true },
 };
-export const TXFLOW_PERIODS = { AWARDED: "Awarded epochs only", S1: "Season 1 · Epochs 1–3", S0: "S0 · Before 12 Oct 2026", EPOCH_1: "S1 · Epoch 1 · 12–18 Oct", EPOCH_2: "S1 · Epoch 2 · 19–25 Oct", EPOCH_3: "S1 · Epoch 3 · 26 Oct–1 Nov", ALLTIME: "All available history", "24H": "Last 24 hours", "7D": "Last 7 days", "30D": "Last 30 days", "90D": "Last 90 days" };
+export const TXFLOW_PERIODS = { AWARDED: "Awarded epochs only", S1: "Season 1 · Epochs 1–4", S0: "S0 · Before 12 Oct 2026", EPOCH_1: "S1 · Epoch 1 · 12–18 Oct", EPOCH_2: "S1 · Epoch 2 · 19–25 Oct", EPOCH_3: "S1 · Epoch 3 · 26 Oct–1 Nov", EPOCH_4: "S1 · Epoch 4 · 2–8 Nov", ALLTIME: "All available history", "24H": "Last 24 hours", "7D": "Last 7 days", "30D": "Last 30 days", "90D": "Last 90 days" };
 export type TxflowEpochId = keyof typeof TXFLOW_EPOCHS;
 export type TxflowReportEpochId = TxflowEpochId | `EPOCH_${number}`;
 export type TxflowPeriod = keyof typeof TXFLOW_PERIODS;
@@ -94,7 +95,7 @@ export function parseTxflowWalletSettings(raw: string | null): TxflowWalletSetti
       if (/^0x[0-9a-f]{40}:(S0|EPOCH_[1-9]\d{0,3}|24H|7D|30D|90D)$/.test(key) && typeof value === "string" && value.length <= 100) points[key] = value;
     }
     if (saved.received && typeof saved.received === "object" && !Array.isArray(saved.received)) for (const [key, value] of Object.entries(saved.received).slice(-500)) {
-      if (/^0x[0-9a-f]{40}:(S0|EPOCH_1|EPOCH_2|EPOCH_3)$/.test(key) && typeof value === "boolean") received[key] = value;
+      if (/^0x[0-9a-f]{40}:(S0|EPOCH_1|EPOCH_2|EPOCH_3|EPOCH_4)$/.test(key) && typeof value === "boolean") received[key] = value;
     }
     return { address: typeof saved.address === "string" ? saved.address.slice(0, 42) : "", period: typeof saved.period === "string" && Object.hasOwn(TXFLOW_PERIODS, saved.period) ? saved.period : "AWARDED", points, received };
   } catch { return TXFLOW_WALLET_DEFAULTS; }

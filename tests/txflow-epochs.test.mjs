@@ -129,7 +129,7 @@ test('Epoch 3 enters awarded totals on 3 November and excludes subsequent tradin
   assert.deepEqual(txflowReceivedEpochs({received:{}},address,distributed),ids);
   assert.deepEqual(txflowAwardedEpochs(undefined,cutoff-1),ids.slice(0,3));
   assert.deepEqual(txflowAwardedEpochs([...ids].reverse(),distributed),ids);
-  assert.deepEqual(txflowEpochIds('S1',ids,distributed),ids.slice(1));
+  assert.deepEqual(txflowEpochIds('S1',ids,distributed),[...ids.slice(1),'EPOCH_4']);
   const range=txflowPeriodRange('EPOCH_3',distributed);
   assert.equal(range.from,end);assert.equal(range.to,cutoff);assert.equal(range.endExclusive,true);
   const fills=[fill(end-1),fill(end),fill(cutoff-1),fill(cutoff)];
@@ -164,4 +164,33 @@ test('the current epoch has its own activity and rolls forward without entering 
   assert.equal(report.summary.feesByRole.taker.net, '0.01');
   assert.equal(report.funding.net, '1');
   assert.equal(report.holding.buckets.find(row => row.id === 'under1h').volume, '100');
+});
+
+test('Epoch 4 is the latest awarded epoch from 10 November while Epoch 5 stays separate', () => {
+  const distributed = at('2026-11-10T12:00:00Z'), cutoff = at('2026-11-09T00:00:00Z');
+  const address = '0x4c4e9818925a5bdaf5f50944ffbe9d297e58563b';
+  const awarded = ['S0','EPOCH_1','EPOCH_2','EPOCH_3','EPOCH_4'];
+  assert.deepEqual(txflowAwardedEpochs(undefined,distributed),awarded);
+  assert.deepEqual(txflowReceivedEpochs({received:{}},address,distributed),awarded);
+  assert.deepEqual(txflowAwardedEpochs(undefined,at('2026-11-09T23:59:59.999Z')),awarded.slice(0,-1));
+  assert.equal(txflowCurrentEpoch(distributed).id,'EPOCH_5');
+  const range = txflowPeriodRange('EPOCH_4',distributed);
+  assert.deepEqual(range,{from:at('2026-11-02T00:00:00Z'),to:cutoff,endExclusive:true});
+  const fills = [fill(range.from-1),fill(range.from),fill(cutoff-1),fill(cutoff)];
+  const funding = fills.map(row => ({key:row.key,time:row.time,market:row.market,amount:'1'}));
+  const windows = txflowSelectionWindows('AWARDED',distributed);
+  assert.equal(summarizeTxFills(fills.filter(row=>txflowInWindows(row.time,windows))).fills,3);
+  assert.equal(summarizeTxFunding(funding.filter(row=>txflowInWindows(row.time,windows))).count,3);
+  const [fourth] = buildTxEpochReports(fills,funding,['EPOCH_4'],distributed,scan);
+  assert.equal(fourth.completed,true);
+  assert.equal(fourth.summary.fills,2);
+  assert.equal(fourth.summary.volume,'200');
+  const saved = parseTxflowWalletSettings(JSON.stringify({address,period:'EPOCH_4',
+    points:{[`${address}:EPOCH_3`]:'30',[`${address}:EPOCH_4`]:'40',[`${address}:EPOCH_5`]:'50'},
+    received:{[`${address}:EPOCH_4`]:true}}));
+  assert.equal(saved.period,'EPOCH_4');
+  assert.equal(saved.points[`${address}:EPOCH_3`],'30');
+  assert.equal(saved.points[`${address}:EPOCH_4`],'40');
+  assert.equal(saved.points[`${address}:EPOCH_5`],'50');
+  assert.equal(saved.received[`${address}:EPOCH_4`],true);
 });

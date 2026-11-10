@@ -46,7 +46,7 @@ export function researchInput(value: unknown): { name: string; points: Record<st
   };
   const points: Record<string, string> = {};
   if (input.points && typeof input.points === "object" && !Array.isArray(input.points)) {
-    for (const id of ["S0", "EPOCH_1", "EPOCH_2", "EPOCH_3"]) {
+    for (const id of ["S0", "EPOCH_1", "EPOCH_2", "EPOCH_3", "EPOCH_4"]) {
       const raw = (input.points as Record<string, unknown>)[id];
       // Empty is unknown; explicitly entered zero is a valid observation.
       const normalized = pointValue(raw);

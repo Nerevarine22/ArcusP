@@ -101,6 +101,7 @@ input.large-input { font-family:var(--serif); font-size:26px; font-weight:400; c
 .control-heading label { margin:0; }
 .control-heading strong { color:var(--forest); font-size:14px; font-weight:500; }
 .preset-list { display:flex; gap:6px; }
+.allocation-presets { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); }
 .preset-list button { flex:1; padding:8px 10px; background:#eeeee3; border:1px solid #dedfd0; border-radius:6px; color:#5c6953; font-size:10px; font-weight:500; white-space:nowrap; }
 .fdv-presets { gap:5px; }
 .fdv-presets button { padding:8px 8px; font-size:9px; }
@@ -121,7 +122,8 @@ input[type=range] { width:100%; margin:15px 0 0; accent-color:var(--forest); hei
 .standing-head small { color:#79856e; font-size:10px; font-weight:400; }
 .position-track { height:5px; background:#d4ddc6; border-radius:3px; margin-top:15px; overflow:hidden; }
 .position-track>span { display:block; height:100%; background:var(--forest); border-radius:3px; transition:width .2s; }
-.matrix-panel { margin-top:18px; padding:22px; }
+.matrix-panel { min-width:0; margin-top:18px; padding:22px; }
+.matrix-panel table { min-width:660px; }
 .matrix-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:13px; margin-bottom:20px; }
 .matrix-heading h2 { font-size:26px; }
 .matrix-heading p { font-size:10px; color:#758269; line-height:1.6; margin:7px 0 0; }

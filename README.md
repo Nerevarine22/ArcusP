@@ -153,7 +153,7 @@ npm start
 
 ## Airdrop model
 
-FDV presets: $500M, $1B, $1.5B, $2B, $3B. Allocation presets: 5%, 10%, 15%.
+FDV presets: $500M, $1B, $1.5B, $2B, $3B. Allocation presets: 10%, 15%, 20%, 25%, 30%.
 The Arcus default pool is **11,000,000 points**, a reference assumption rather than
 the current Season 1 total. Enter a custom pool or use the snapshot's point total.
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
-import { ASSUMED_TOTAL_POINTS, FDV_PRESETS } from "@/lib/estimator";
+import { ALLOCATION_PRESETS, ASSUMED_TOTAL_POINTS, FDV_PRESETS } from "@/lib/estimator";
 
 type EstimateSettings = {
   pointsInput: string;
@@ -31,7 +31,7 @@ function parseSettings(raw: string | null): EstimateSettings {
       pointsInput: typeof saved.pointsInput === "string" && saved.pointsInput.length <= 100 ? saved.pointsInput : defaults.pointsInput,
       totalInput: typeof saved.totalInput === "string" && saved.totalInput.length <= 100 ? saved.totalInput : defaults.totalInput,
       fdv: Number.isFinite(saved.fdv) && saved.fdv >= 500_000_000 && saved.fdv <= 3_000_000_000 ? saved.fdv : defaults.fdv,
-      allocation: Number.isFinite(saved.allocation) && saved.allocation >= 5 && saved.allocation <= 15 ? saved.allocation : defaults.allocation,
+      allocation: Number.isFinite(saved.allocation) && saved.allocation >= ALLOCATION_PRESETS[0] && saved.allocation <= ALLOCATION_PRESETS.at(-1)! ? saved.allocation : defaults.allocation,
       perPoint: typeof saved.perPoint === "boolean" ? saved.perPoint : defaults.perPoint,
       linkedName: typeof saved.linkedName === "string" && saved.linkedName.length <= 100 ? saved.linkedName : null,
     };

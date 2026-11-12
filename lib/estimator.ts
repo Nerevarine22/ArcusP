@@ -1,5 +1,5 @@
 export const FDV_PRESETS = [500_000_000, 1_000_000_000, 1_500_000_000, 2_000_000_000, 3_000_000_000];
-export const ALLOCATION_PRESETS = [5, 10, 15];
+export const ALLOCATION_PRESETS = [10, 15, 20, 25, 30];
 export const ASSUMED_TOTAL_POINTS = 11_000_000;
 
 /** Proportional hypothetical allocation; round only when displaying. */

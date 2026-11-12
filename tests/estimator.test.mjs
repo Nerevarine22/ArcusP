@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { estimate, parsePoints, FDV_PRESETS, ALLOCATION_PRESETS, ASSUMED_TOTAL_POINTS } from '../lib/estimator.ts';
 
-test('all 15 one-point values match the supplied 11M reference', () => {
-  const expected = [[2.27,4.55,6.82],[4.55,9.09,13.64],[6.82,13.64,20.45],[9.09,18.18,27.27],[13.64,27.27,40.91]];
+test('all 25 one-point values match the 11M scenarios from 10% to 30% allocation', () => {
+  const expected = [[4.55,6.82,9.09,11.36,13.64],[9.09,13.64,18.18,22.73,27.27],[13.64,20.45,27.27,34.09,40.91],[18.18,27.27,36.36,45.45,54.55],[27.27,40.91,54.55,68.18,81.82]];
   FDV_PRESETS.forEach((fdv, row) => ALLOCATION_PRESETS.forEach((allocation, col) => {
     const result = estimate(fdv, allocation, ASSUMED_TOTAL_POINTS, 1);
     assert.equal(Number(result.value.toFixed(2)), expected[row][col]);

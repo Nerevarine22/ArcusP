@@ -12,8 +12,8 @@ const points = { week: 3, distributed_at: week.end, status: 'recorded', earned_p
 
 test('saved distributions give separate weekly gains that sum to the cumulative total', async () => {
   const points = await readWeeklyPoints('  WITTY   PHOENIX ');
-  assert.deepEqual(points.map(row => row.earned_points), [2.98, 12.78, 18.15, 18.09, 8.48]);
-  assert.equal(points.reduce((sum, row) => sum + Math.round(row.earned_points * 100), 0), 6048);
+  assert.deepEqual(points.map(row => row.earned_points), [2.98, 12.78, 18.15, 18.09, 8.48, 13.29]);
+  assert.equal(points.reduce((sum, row) => sum + Math.round(row.earned_points * 100), 0), 7377);
   for (const row of points) {
     assert.equal(Date.parse(row.distributed_at), pointsDistributionAt(row.week));
     assert.notEqual(row.downloaded_at, row.distributed_at);

@@ -5,7 +5,7 @@ export const ENTROPY_PERIODS = { ALL: "Available history", "24H": "Last 24 hours
 export type EntropyPeriod = keyof typeof ENTROPY_PERIODS;
 export type EntropySettings = { address: string; period: EntropyPeriod };
 export const ENTROPY_DEFAULTS: EntropySettings = { address: "", period: "ALL" };
-export type EntropyFill = TxFill & { builderFee: string };
+export type EntropyFill = TxFill & { builderFee: string; price?: string };
 export type EntropyScan<T> = TxScan<T> & { rawCount: number; ignored: number; firstTime: number | null; retentionLimited: boolean };
 export type EntropyReport = {
   version: 1; address: string; dex: "io"; period: EntropyPeriod; fetchedAt: string;
@@ -52,15 +52,20 @@ const optionalAmount = (value: unknown) => value === undefined || value === null
 const scale = BigInt("1000000000000000000");
 
 export function normalizeEntropyFill(value: unknown): EntropyFill | null {
+  if (!isEntropyMarket(record(value).coin)) return null;
+  return normalizeHyperliquidPerpFill(value);
+}
+/** Account-wide feed used only to enrich executions already attributed by a builder archive. */
+export function normalizeHyperliquidPerpFill(value: unknown): EntropyFill | null {
   const row = record(value);
-  if (!isEntropyMarket(row.coin)) return null;
+  if (typeof row.coin !== "string" || !/^(?:[A-Za-z0-9_.-]+:)?[A-Za-z0-9_.-]{1,80}$/.test(row.coin)) return null;
   if (row.side !== "A" && row.side !== "B") throw new Error("Invalid execution side.");
   const size = amount(row.sz), price = amount(row.px);
   if (txAtoms(size) <= BigInt(0) || txAtoms(price) <= BigInt(0)) throw new Error("Execution size and price must be positive.");
   const tid = id(row.tid), oid = id(row.oid), timestamp = time(row.time);
   const fee = amount(row.fee), builderFee = row.builderFee == null ? "0" : amount(row.builderFee);
   if (txAtoms(builderFee) < BigInt(0)) throw new Error("Builder fees cannot be negative.");
-  return { key: `${row.coin}:${tid}:${oid}:${row.side}`, market: row.coin, instrument: row.coin,
+  return { key: `${row.coin}:${tid}:${oid}:${row.side}`, market: row.coin, instrument: row.coin, price,
     side: row.side === "B" ? "BUY" : "SELL", size, startPosition: optionalAmount(row.startPosition), sequence: tid, marginMode: "hip3",
     time: timestamp, notional: txUsd((txAtoms(size) * txAtoms(price) + scale / BigInt(2)) / scale),
     fee, feeToken: typeof row.feeToken === "string" && row.feeToken.trim() ? row.feeToken.trim().toUpperCase() : "Unknown",

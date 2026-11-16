@@ -93,6 +93,15 @@
 .en-role-cards dd { text-align:right; overflow-wrap:anywhere; margin:0; font-family:'Entropy Mono',monospace; font-size:10px; }
 .en-role-cards dl>div:last-child { padding-top:12px; margin-top:12px; border-top:1px solid #343b35; }
 .en-help { font-size:10px; line-height:1.9; color:var(--en-muted); margin-top:15px!important; }
+.en-scope-picker { padding:0; margin:0 0 12px; border:0; min-width:0; }
+.en-scope-picker legend { color:var(--en-muted); font-size:11px; margin-bottom:12px; }
+.en-scope-picker>div { display:flex; flex-wrap:wrap; gap:8px; }
+.en-scope-picker label { position:relative; cursor:pointer; }
+.en-scope-picker input { position:absolute; opacity:0; width:1px; height:1px; }
+.en-scope-picker span { display:block; padding:11px 16px; border:1px solid #414b44; border-radius:7px; color:var(--en-muted); font-size:11px; transition:background .15s,border-color .15s,color .15s; }
+.en-scope-picker input:checked+span { color:#c2eadb; background:#244a3b; border-color:#72ad96; }
+.en-scope-picker input:focus-visible+span { outline:2px solid #b7e6d3; outline-offset:3px; }
+.en-scope-help { color:var(--en-muted); font-size:10px; line-height:1.8; margin:0 0 24px!important; max-width:800px; }
 .en-holding-facts { display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:24px; }
 .en-holding-facts span { display:block; font-size:9px; color:var(--en-muted); line-height:1.7; }
 .en-holding-facts strong { display:block; font-weight:400; font-size:24px; letter-spacing:-.8px; margin-top:8px; }

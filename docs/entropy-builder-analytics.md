@@ -1,5 +1,11 @@
 # Entropy builder analytics
 
+Historical implementation, no longer used by `/api/entropy/wallet`. The checker
+now reads the public Hyperliquid API with an explicit market-scope selector;
+see [current analytics](entropy-hyperliquid-analytics.md). Builder archives were
+found to omit substantial execution history. Existing research data and modules
+remain available, but checking a wallet no longer queries or updates this schema.
+
 Entropy history is attributed using builder `0xcd254d2a328f7f67c7c6fef930a4757516f7b601`, not the `io:` market prefix. Public daily builder files include native and HIP-3 perpetual markets. An address appearing only as counterparty does not qualify. Spot executions are excluded.
 
 Run `npm run entropy:init` once against the connected PostgreSQL database. This creates the private `entropy_analytics` schema with one row per requested wallet/day and a cached report per wallet/period. Global execution archives and other wallets' executions are not retained in PostgreSQL. DATABASE_URL stays server-side.

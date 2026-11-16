@@ -4,7 +4,7 @@ import { registerHooks } from 'node:module';
 
 // Resolve the shared analytics module when running TypeScript directly in Node.
 registerHooks({resolve(specifier,context,next){return next(specifier === './txflow-wallet' ? './txflow-wallet.ts' : specifier,context);}});
-const { normalizeEntropyFill, normalizeEntropyFunding, normalizeEntropyAccount, collectEntropyHistory, buildEntropyReport, isEntropyMarket, parseEntropySettings, entropyRange } = await import('../lib/entropy-wallet.ts');
+const { normalizeEntropyFill, normalizeHyperliquidPerpFill, normalizeEntropyFunding, normalizeHyperliquidPerpFunding, normalizeEntropyAccount, collectEntropyHistory, buildEntropyReport, isEntropyMarket, parseEntropySettings, entropyRange } = await import('../lib/entropy-wallet.ts');
 
 const address='0x1111111111111111111111111111111111111111', now=Date.parse('2026-10-29T12:00:00Z');
 const raw = (tid,time=now-1000,patch={}) => ({coin:'io:SNDK',tid:String(tid),oid:String(tid),px:'100',sz:'1',side:'B',crossed:false,time,startPosition:'0',closedPnl:'0',fee:'0.01',feeToken:'USDC',...patch});
@@ -122,7 +122,33 @@ test('io account response rejects foreign markets and wallet settings remain sep
   const account={marginSummary:{accountValue:'1',totalMarginUsed:'0',totalNtlPos:'0'},withdrawable:'1',assetPositions:[],time:now};
   assert.equal(normalizeEntropyAccount(account).positions.length,0);
   assert.throws(()=>normalizeEntropyAccount({...account,assetPositions:[{position:{coin:'xyz:SNDK'}}]}));
-  assert.deepEqual(parseEntropySettings('{"address":"0x123","period":"7D"}'),{address:'0x123',period:'7D'});
+  assert.deepEqual(parseEntropySettings('{"address":"0x123","period":"7D"}'),{address:'0x123',period:'7D',scope:'io'});
   assert.equal(parseEntropySettings('{"address":"x","period":"AWARDED"}').period,'ALL');
   assert.equal(parseEntropySettings('bad').address,'');
+});
+
+test('scope migration defaults to io and preserves a supported saved all-perps selection',()=>{
+  assert.equal(parseEntropySettings(null).scope,'io');
+  assert.equal(parseEntropySettings('{"scope":"builder"}').scope,'io');
+  assert.equal(parseEntropySettings('{"scope":"all","period":"30D"}').scope,'all');
+});
+
+test('all-perps scope includes native and other HIP-3 markets but excludes spot in both fills and funding',async()=>{
+  const input=['io:SNDK','BTC','xyz:NVDA','@107','PURR/USDC'].map((coin,i)=>raw(i+1,now-5000+i,{coin,crossed:i===1,fee:i===1?'0.2':'0.01'}));
+  const load=normalize=>collectEntropyHistory(async()=>input,normalize,{to:now,limit:2000,maxPages:8,kind:'fills'});
+  const [io,all]=await Promise.all([load(normalizeEntropyFill),load(normalizeHyperliquidPerpFill)]);
+  assert.deepEqual(io.rows.map(row=>row.market),['io:SNDK']);
+  assert.deepEqual(all.rows.map(row=>row.market),['io:SNDK','BTC','xyz:NVDA']);
+  assert.equal(all.rawCount,5);assert.equal(all.ignored,2);assert.equal(io.ignored,4);
+  const payments=['io:SNDK','BTC','xyz:NVDA','@107'].map((coin,i)=>funding(now-1000+i,{coin,usdc:String(i+1)}));
+  const ioFunding=scan(payments.map(normalizeEntropyFunding).filter(Boolean));
+  const allFunding=scan(payments.map(normalizeHyperliquidPerpFunding).filter(Boolean));
+  const ioReport=buildEntropyReport(address,'ALL',now,io,ioFunding,null);
+  const allReport=buildEntropyReport(address,'ALL',now,all,allFunding,null,undefined,'all');
+  assert.equal(ioReport.scope,'io');assert.equal(ioReport.dex,'io');assert.equal(ioReport.summary.volume,'100');
+  assert.equal(allReport.version,3);assert.equal(allReport.scope,'all');assert.equal(allReport.dex,'all');
+  assert.equal(allReport.summary.volume,'300');assert.equal(allReport.summary.makerVolume,'200');assert.equal(allReport.summary.takerVolume,'100');
+  assert.equal(allReport.summary.netFees,'0.22');assert.equal(ioReport.funding.net,'1');assert.equal(allReport.funding.net,'6');
+  assert.equal(allReport.realizedNet,'5.78');
+  assert.equal(allReport.markets.reduce((sum,row)=>sum+Number(row.volume),0),300);
 });

@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ENTROPY_PERIODS, type EntropyPeriod } from "@/lib/entropy-wallet";
-import { syncBuilderWallet } from "@/lib/entropy-builder-service";
-import { fetchBuilderDay, fetchBuilderFeeHistory } from "@/lib/entropy-builder-source";
-import { readBuilderDays, saveBuilderDays, saveBuilderReport } from "@/lib/entropy-builder-store";
+import { parse } from "lossless-json";
+import { ENTROPY_PERIODS, ENTROPY_SCOPES, buildEntropyReport, collectEntropyHistory, normalizeEntropyAccount, normalizeEntropyFill, normalizeEntropyFunding, normalizeHyperliquidPerpFill, normalizeHyperliquidPerpFunding, type EntropyPeriod, type EntropyScope } from "@/lib/entropy-wallet";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,23 +8,27 @@ export const maxDuration = 60;
 const headers = { "Cache-Control": "no-store" };
 
 export async function POST(request: NextRequest) {
-  let body: { address?: unknown; period?: unknown; sync?: unknown };
+  let body: { address?: unknown; period?: unknown; scope?: unknown };
   try { body = await request.json(); if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error(); }
   catch { return NextResponse.json({ error: "Send a valid wallet request." }, { status: 400, headers }); }
   const address = typeof body.address === "string" ? body.address.trim().toLowerCase() : "";
   if (!/^0x[0-9a-f]{40}$/.test(address)) return NextResponse.json({ error: "Enter a valid 0x wallet address with 40 hexadecimal characters." }, { status: 400, headers });
   const period = body.period ?? "ALL";
   if (typeof period !== "string" || !Object.hasOwn(ENTROPY_PERIODS, period)) return NextResponse.json({ error: "Select a supported analysis period." }, { status: 400, headers });
-  if (body.sync !== undefined && typeof body.sync !== "boolean") return NextResponse.json({ error: "Invalid import request." }, { status: 400, headers });
-  const signal = AbortSignal.any([request.signal, AbortSignal.timeout(45_000)]);
-  try {
-    const report = await syncBuilderWallet(address, period as EntropyPeriod, Date.now(), body.sync !== false, signal,
-      { read: readBuilderDays, save: saveBuilderDays, saveReport: saveBuilderReport, archive: fetchBuilderDay, fees: fetchBuilderFeeHistory });
-    return NextResponse.json(report, { headers });
-  } catch (error) {
-    // Database exceptions are translated by the store; never expose driver messages or credentials.
-    const message = signal.aborted ? "Import interrupted. Previously saved days are retained; run Analyze activity to continue."
-      : error instanceof Error && error.message.startsWith("Entropy ") ? error.message : "Entropy history could not be loaded. Previously saved history is retained.";
-    return NextResponse.json({ error: message }, { status: 503, headers });
+  const scope = body.scope ?? "io";
+  if (typeof scope !== "string" || !Object.hasOwn(ENTROPY_SCOPES, scope)) return NextResponse.json({ error: "Select a supported market scope." }, { status: 400, headers });
+  const now = Date.now(), signal = AbortSignal.any([request.signal, AbortSignal.timeout(45_000)]);
+  async function read(payload: Record<string, unknown>) {
+    const response = await fetch("https://api.hyperliquid.xyz/info", { method: "POST", cache: "no-store", signal,
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    if (!response.ok) throw new Error(response.status === 429 ? "Hyperliquid rate limit reached. Try again shortly." : "Hyperliquid data is temporarily unavailable.");
+    return parse(await response.text(), null, { parseNumber: value => value });
   }
+  const [fills, funding, accountResult] = await Promise.all([
+    collectEntropyHistory(startTime => read({ type: "userFillsByTime", user: address, startTime, endTime: now, aggregateByTime: false }), scope === "io" ? normalizeEntropyFill : normalizeHyperliquidPerpFill, { to: now, limit: 2000, maxPages: 8, kind: "fills" }),
+    collectEntropyHistory(startTime => read({ type: "userFunding", user: address, startTime, endTime: now }), scope === "io" ? normalizeEntropyFunding : normalizeHyperliquidPerpFunding, { to: now, limit: 500, maxPages: 20, kind: "funding" }),
+    scope === "io" ? read({ type: "clearinghouseState", user: address, dex: "io" }).then(value => ({ data: normalizeEntropyAccount(value), warning: undefined })).catch(() => ({ data: null, warning: "Current io positions could not be loaded. Historical trading metrics remain available." })) : Promise.resolve({ data: null, warning: undefined }),
+  ]);
+  if (fills.status === "unavailable" && funding.status === "unavailable" && accountResult.data === null) return NextResponse.json({ error: "Entropy activity could not be loaded from Hyperliquid. Try again shortly." }, { status: 502, headers });
+  return NextResponse.json(buildEntropyReport(address, period as EntropyPeriod, now, fills, funding, accountResult.data, accountResult.warning, scope as EntropyScope), { headers });
 }

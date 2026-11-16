@@ -4,7 +4,7 @@ import "./entropy.css";
 
 export const metadata: Metadata = {
   title: "Entropy · Wallet Analytics",
-  description: "Analyze confirmed Entropy builder trades, maker and taker volume, and verified execution fees, with public archive coverage shown.",
+  description: "Analyze io: markets or all Hyperliquid perpetual markets by wallet, including maker and taker volume, fees and funding from available API history.",
   icons: { icon: "/brand/entropy/symbol.svg" },
 };
 export default function EntropyPage() { return <EntropyWallet />; }

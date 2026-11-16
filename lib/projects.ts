@@ -53,7 +53,7 @@ export const projects: Project[] = [
     id: "entropy",
     name: "Entropy",
     status: "available",
-    description: "Analyze confirmed Entropy builder trades, execution roles and verified fees, with archive coverage shown.",
+    description: "Analyze io: markets or all Hyperliquid perpetual markets, with volume, execution fees and funding by wallet.",
     tools: ["Wallet analytics"],
     href: "/entropy",
     walletHref: "/entropy",

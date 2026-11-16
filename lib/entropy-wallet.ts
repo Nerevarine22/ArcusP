@@ -2,13 +2,15 @@ import { analyzeTxHolding, groupTxFills, summarizeTxFills, summarizeTxFunding, t
 
 export const ENTROPY_PREFIX = "io:";
 export const ENTROPY_PERIODS = { ALL: "Available history", "24H": "Last 24 hours", "7D": "Last 7 days", "30D": "Last 30 days", "90D": "Last 90 days" };
+export const ENTROPY_SCOPES = { io: "io: markets only", all: "All Hyperliquid perps" };
+export type EntropyScope = keyof typeof ENTROPY_SCOPES;
 export type EntropyPeriod = keyof typeof ENTROPY_PERIODS;
-export type EntropySettings = { address: string; period: EntropyPeriod };
-export const ENTROPY_DEFAULTS: EntropySettings = { address: "", period: "ALL" };
+export type EntropySettings = { address: string; period: EntropyPeriod; scope: EntropyScope };
+export const ENTROPY_DEFAULTS: EntropySettings = { address: "", period: "ALL", scope: "io" };
 export type EntropyFill = TxFill & { builderFee: string; price?: string };
 export type EntropyScan<T> = TxScan<T> & { rawCount: number; ignored: number; firstTime: number | null; retentionLimited: boolean };
 export type EntropyReport = {
-  version: 1; address: string; dex: "io"; period: EntropyPeriod; fetchedAt: string;
+  version: 3; address: string; dex: EntropyScope; scope: EntropyScope; period: EntropyPeriod; fetchedAt: string;
   range: { from: string | null; to: string }; scan: Omit<EntropyScan<EntropyFill>, "rows">;
   fundingScan: Omit<EntropyScan<TxFunding>, "rows">;
   summary: TxSummary | null; builderFeesIncluded: string | null;
@@ -23,10 +25,11 @@ export function parseEntropySettings(raw: string | null): EntropySettings {
   try {
     const value = JSON.parse(raw ?? "null");
     if (!value || typeof value !== "object" || Array.isArray(value)) return ENTROPY_DEFAULTS;
-    return { address: typeof value.address === "string" ? value.address.slice(0, 42) : "", period: Object.hasOwn(ENTROPY_PERIODS, value.period) ? value.period : "ALL" };
+    return { address: typeof value.address === "string" ? value.address.slice(0, 42) : "", period: Object.hasOwn(ENTROPY_PERIODS, value.period) ? value.period : "ALL", scope: Object.hasOwn(ENTROPY_SCOPES, value.scope) ? value.scope : "io" };
   } catch { return ENTROPY_DEFAULTS; }
 }
 export const isEntropyMarket = (coin: unknown): coin is string => typeof coin === "string" && /^io:[A-Za-z0-9_.-]{1,80}$/.test(coin);
+export const isHyperliquidPerpMarket = (coin: unknown): coin is string => typeof coin === "string" && /^(?:[A-Za-z0-9_.-]+:)?[A-Za-z0-9_.-]{1,80}$/.test(coin);
 export function entropyRange(period: EntropyPeriod, now: number) {
   const days = { "24H": 1, "7D": 7, "30D": 30, "90D": 90 };
   return { from: period === "ALL" ? null : now - days[period] * 86_400_000, to: now };
@@ -55,10 +58,10 @@ export function normalizeEntropyFill(value: unknown): EntropyFill | null {
   if (!isEntropyMarket(record(value).coin)) return null;
   return normalizeHyperliquidPerpFill(value);
 }
-/** Account-wide feed used only to enrich executions already attributed by a builder archive. */
+/** Native and HIP-3 perpetual markets; spot symbols are excluded. */
 export function normalizeHyperliquidPerpFill(value: unknown): EntropyFill | null {
   const row = record(value);
-  if (typeof row.coin !== "string" || !/^(?:[A-Za-z0-9_.-]+:)?[A-Za-z0-9_.-]{1,80}$/.test(row.coin)) return null;
+  if (!isHyperliquidPerpMarket(row.coin)) return null;
   if (row.side !== "A" && row.side !== "B") throw new Error("Invalid execution side.");
   const size = amount(row.sz), price = amount(row.px);
   if (txAtoms(size) <= BigInt(0) || txAtoms(price) <= BigInt(0)) throw new Error("Execution size and price must be positive.");
@@ -74,6 +77,11 @@ export function normalizeHyperliquidPerpFill(value: unknown): EntropyFill | null
 export function normalizeEntropyFunding(value: unknown): TxFunding | null {
   const row = record(value), delta = record(row.delta);
   if (!isEntropyMarket(delta.coin)) return null;
+  return normalizeHyperliquidPerpFunding(value);
+}
+export function normalizeHyperliquidPerpFunding(value: unknown): TxFunding | null {
+  const row = record(value), delta = record(row.delta);
+  if (!isHyperliquidPerpMarket(delta.coin)) return null;
   if (delta.type !== "funding") throw new Error("Unexpected funding entry.");
   const timestamp = time(row.time);
   return { key: `${delta.coin}:${timestamp}:${String(row.hash ?? "")}`, market: delta.coin, time: timestamp, amount: amount(delta.usdc) };
@@ -138,7 +146,7 @@ export function normalizeEntropyAccount(value: unknown): TxAccount {
 }
 
 export function buildEntropyReport(address: string, period: EntropyPeriod, now: number,
-  fillScan: EntropyScan<EntropyFill>, fundingScan: EntropyScan<TxFunding>, account: TxAccount | null, accountWarning?: string): EntropyReport {
+  fillScan: EntropyScan<EntropyFill>, fundingScan: EntropyScan<TxFunding>, account: TxAccount | null, accountWarning?: string, scope: EntropyScope = "io"): EntropyReport {
   const range = entropyRange(period, now), inRange = (value: { time: number }) => value.time <= now && (range.from === null || value.time >= range.from);
   const fills = fillScan.rows.filter(inRange), fundings = fundingScan.rows.filter(inRange);
   const summary = fillScan.status === "unavailable" ? null : summarizeTxFills(fills);
@@ -158,7 +166,7 @@ export function buildEntropyReport(address: string, period: EntropyPeriod, now: 
     const start = date.toISOString(); if (!weeks.has(start)) weeks.set(start, []); weeks.get(start)!.push(fill);
   }
   const { rows: ignoredFills, ...scan } = fillScan, { rows: ignoredFunding, ...fundingInfo } = fundingScan;
-  return { version: 1, address, dex: "io", period, fetchedAt: new Date(now).toISOString(), range: { from: range.from === null ? null : new Date(range.from).toISOString(), to: new Date(now).toISOString() },
+  return { version: 3, address, dex: scope, scope, period, fetchedAt: new Date(now).toISOString(), range: { from: range.from === null ? null : new Date(range.from).toISOString(), to: new Date(now).toISOString() },
     scan, fundingScan: fundingInfo, summary, builderFeesIncluded: summary ? txUsd(fills.filter(fill => fill.feeToken === "USDC").reduce((sum, fill) => sum + txAtoms(fill.builderFee), BigInt(0))) : null,
     funding, realizedNet: summary && funding ? txUsd(txAtoms(summary.closedPnl) - txAtoms(summary.netFees) + txAtoms(funding.net)) : null,
     holding, account, warnings, ...grouped,

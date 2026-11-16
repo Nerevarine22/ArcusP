@@ -16,7 +16,7 @@ export type BuilderDay = {
   fills: BuilderExecution[]; error?: string;
 };
 export type BuilderProgress = { total: number; checked: number; remaining: number; available: number; unavailable: number; cached: boolean };
-export type EntropyBuilderReport = Omit<EntropyReport, "version" | "dex"> & {
+export type EntropyBuilderReport = Omit<EntropyReport, "version" | "dex" | "scope"> & {
   version: 2; dex: "builder";
   attribution: {
     builder: string; source: "builder-archives"; incomplete: true; storage: "database";

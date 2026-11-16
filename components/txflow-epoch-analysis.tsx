@@ -5,7 +5,7 @@ import styles from "@/components/epoch-activity-card.module.css";
 import TxflowHolding from "@/components/txflow-holding";
 import TxflowExecutionProfile from "@/components/txflow-execution-profile";
 import { parsePoints } from "@/lib/estimator";
-import { TXFLOW_EPOCHS, txflowEpochDistributed, type TxflowEpochId, type TxflowReportEpochId, type TxWalletReport } from "@/lib/txflow-wallet";
+import { TXFLOW_EPOCHS, txflowEpochDistributed, txflowReportEpochs, type TxflowEpochId, type TxflowReportEpochId, type TxWalletReport } from "@/lib/txflow-wallet";
 
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 const preciseUsd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 6 });
@@ -18,7 +18,7 @@ export default function TxflowEpochAnalysis({ report, points, received, selected
   now: number; onSelect: (id: TxflowReportEpochId) => void; onPoints: (id: TxflowReportEpochId, value: string) => void;
   onReceived: (id: TxflowEpochId, value: boolean) => void;
 }) {
-  const epochs = report.currentEpoch ? [...report.epochs, report.currentEpoch] : report.epochs;
+  const epochs = txflowReportEpochs(report);
   const selected = epochs.find(epoch => epoch.id === selectedId);
   if (!selected) return null;
   const currentSelected = selected === report.currentEpoch;

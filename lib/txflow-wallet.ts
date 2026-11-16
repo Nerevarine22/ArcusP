@@ -36,6 +36,23 @@ export function txflowCurrentEpoch(now: number): TxflowEpochWindow | null {
   const dates = epochDateFormat.formatRange(new Date(from), new Date(from + weekMs - 1));
   return { id: `EPOCH_${index}`, label: `S1 · Epoch ${index}`, dates, completed: false, range: { from, to: now, endExclusive: false } };
 }
+/** Completed windows must remain visible between their snapshot and confirmed distribution. */
+export function txflowPendingEpochs(now: number): TxflowEpochWindow[] {
+  const entries = Object.entries(TXFLOW_EPOCHS);
+  const pending: TxflowEpochWindow[] = entries.flatMap(([key, epoch]) => {
+    const id = key as TxflowEpochId, end = Date.parse(epoch.end);
+    return end <= now && !txflowEpochDistributed(id, now)
+      ? [{ id, label: epoch.label, dates: epoch.dates, completed: true, range: txflowEpochRange(id, now) }] : [];
+  });
+  const [lastId, lastEpoch] = entries[entries.length - 1];
+  const nextStart = Date.parse(lastEpoch.end), nextIndex = Number(lastId.slice("EPOCH_".length)) + 1;
+  for (let from = nextStart, index = nextIndex; from + weekMs <= now; from += weekMs, index++) {
+    pending.push({ id: `EPOCH_${index}`, label: `S1 · Epoch ${index}`,
+      dates: epochDateFormat.formatRange(new Date(from), new Date(from + weekMs - 1)), completed: true,
+      range: { from, to: from + weekMs, endExclusive: true } });
+  }
+  return pending;
+}
 export const txflowPointsStatus = (period: TxflowPeriod, received: TxflowEpochId[] = []): "pending" | "manual" => Object.hasOwn(TXFLOW_EPOCHS, period) && !TXFLOW_EPOCHS[period as TxflowEpochId].distributed && !received.includes(period as TxflowEpochId) ? "pending" : "manual";
 export const txflowEpochDistributed = (id: TxflowEpochId, now: number) => TXFLOW_EPOCHS[id].distributed && Date.parse(`${TXFLOW_EPOCHS[id].distribution}T00:00:00Z`) <= now;
 export const txflowDefaultAwarded = (now = Date.now()): TxflowEpochId[] => (Object.keys(TXFLOW_EPOCHS) as TxflowEpochId[]).filter(id => txflowEpochDistributed(id, now));
@@ -119,10 +136,17 @@ export type TxWalletReport = {
   holding: TxHoldingAnalysis;
   awardedEpochs: TxflowEpochId[]; windows: { from: string | null; to: string; endExclusive: boolean }[];
   epochs: (TxEpochReport & { id: TxflowEpochId })[];
+  pendingEpochs?: TxEpochReport[];
   currentEpoch?: TxEpochReport;
 };
 export type TxEpochReport = { id: TxflowReportEpochId; label: string; dates: string; range: { from: string | null; to: string; endExclusive: boolean }; completed: boolean;
   summary: TxSummary | null; funding: TxWalletReport["funding"]; holding: TxHoldingAnalysis; markets: TxWalletReport["markets"] };
+
+export function txflowReportEpochs(report: Pick<TxWalletReport, "epochs" | "pendingEpochs" | "currentEpoch">): TxEpochReport[] {
+  const epochs = [...report.epochs, ...(report.pendingEpochs ?? []), ...(report.currentEpoch ? [report.currentEpoch] : [])];
+  return [...new Map(epochs.map(epoch => [epoch.id, epoch])).values()]
+    .sort((a, b) => (a.range.from === null ? -Infinity : Date.parse(a.range.from)) - (b.range.from === null ? -Infinity : Date.parse(b.range.from)));
+}
 
 export function txRecord(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Unexpected TxFlow response.");

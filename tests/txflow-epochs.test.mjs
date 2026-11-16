@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TXFLOW_EPOCHS, txflowAwardedEpochs, txflowCurrentEpoch, txflowPointsStatus, txflowReceivedEpochs, txflowEpochIds, txflowPeriodRange, txflowSelectionWindows, txflowInWindows, summarizeTxFills, summarizeTxFunding, analyzeTxHolding, buildTxEpochReport, buildTxEpochReports, normalizeTxFill, parseTxflowWalletSettings } from '../lib/txflow-wallet.ts';
+import { TXFLOW_EPOCHS, txflowAwardedEpochs, txflowCurrentEpoch, txflowPendingEpochs, txflowReportEpochs, txflowPointsStatus, txflowReceivedEpochs, txflowEpochIds, txflowPeriodRange, txflowSelectionWindows, txflowInWindows, summarizeTxFills, summarizeTxFunding, analyzeTxHolding, buildTxEpochReport, buildTxEpochReports, normalizeTxFill, parseTxflowWalletSettings } from '../lib/txflow-wallet.ts';
 
 const at = value => Date.parse(value);
 const today = at('2026-10-26T18:00:00Z'), afterDistribution = at('2026-10-28T12:00:00Z');
@@ -193,4 +193,48 @@ test('Epoch 4 is the latest awarded epoch from 10 November while Epoch 5 stays s
   assert.equal(saved.points[`${address}:EPOCH_4`],'40');
   assert.equal(saved.points[`${address}:EPOCH_5`],'50');
   assert.equal(saved.received[`${address}:EPOCH_4`],true);
+});
+
+test('the Monday rollover preserves all pending weeks without overlap or adding them to awarded totals', () => {
+  const previous = at('2026-11-09T00:00:00Z'), cutoff = at('2026-11-16T00:00:00Z'), now = cutoff + 12*3600000;
+  assert.deepEqual(txflowPendingEpochs(cutoff-1),[]);
+  const [pending] = txflowPendingEpochs(now), current = txflowCurrentEpoch(now);
+  assert.equal(pending.id,'EPOCH_5');
+  assert.deepEqual(pending.range,{from:previous,to:cutoff,endExclusive:true});
+  assert.equal(pending.completed,true);
+  assert.equal(current.id,'EPOCH_6');
+  assert.deepEqual(current.range,{from:cutoff,to:now,endExclusive:false});
+
+  const fills = [fill(previous-1),fill(previous),fill(cutoff-1),fill(cutoff),fill(now),fill(now+1)];
+  const funding = fills.map(row=>({key:row.key,time:row.time,market:row.market,amount:'1'}));
+  const epochs = buildTxEpochReports(fills,funding,txflowEpochIds('AWARDED',txflowAwardedEpochs(undefined,now),now),now,scan);
+  const report = {epochs,pendingEpochs:[buildTxEpochReport(fills,funding,pending,scan)],currentEpoch:buildTxEpochReport(fills,funding,current,scan)};
+  const visible = txflowReportEpochs(report);
+  assert.deepEqual(visible.map(epoch=>epoch.id),['S0','EPOCH_1','EPOCH_2','EPOCH_3','EPOCH_4','EPOCH_5','EPOCH_6']);
+  assert.equal(visible.at(-2).summary.volume,'200');
+  assert.equal(visible.at(-2).funding.net,'2');
+  assert.equal(visible.at(-1).summary.volume,'200');
+  assert.equal(visible.at(-1).funding.net,'2');
+  const awarded = txflowSelectionWindows('AWARDED',now);
+  assert.equal(summarizeTxFills(fills.filter(row=>txflowInWindows(row.time,awarded))).fills,1);
+  assert.equal(summarizeTxFunding(funding.filter(row=>txflowInWindows(row.time,awarded))).count,1);
+  assert.equal(epochs.reduce((total,epoch)=>total+epoch.summary.fills,0),1);
+  // A future close cannot rewrite the holding profile at the completed week's cutoff.
+  assert.deepEqual(report.pendingEpochs[0].holding,buildTxEpochReport(fills.filter(row=>row.time<cutoff),funding,pending,scan).holding);
+
+  const later = cutoff + 2*7*86400000;
+  assert.deepEqual(txflowPendingEpochs(later).map(epoch=>epoch.id),['EPOCH_5','EPOCH_6','EPOCH_7']);
+  assert.equal(txflowCurrentEpoch(later).id,'EPOCH_8');
+  assert.equal(txflowPendingEpochs(at('2026-11-10T12:00:00Z')).some(epoch=>epoch.id==='EPOCH_4'),false);
+  assert.equal(txflowPendingEpochs(at('2026-11-09T12:00:00Z')).some(epoch=>epoch.id==='EPOCH_4'),true);
+});
+
+test('epoch selection keeps legacy reports readable and avoids duplicate cards for all-history scopes', () => {
+  const now = at('2026-11-05T12:00:00Z');
+  const epochs = buildTxEpochReports([],[],['S0','EPOCH_3','EPOCH_4'],now,scan);
+  const currentEpoch = buildTxEpochReport([],[],txflowCurrentEpoch(now),scan);
+  assert.deepEqual(txflowReportEpochs({epochs}),epochs);
+  const visible = txflowReportEpochs({epochs,pendingEpochs:[epochs[1]],currentEpoch});
+  assert.equal(visible.length,3);
+  assert.equal(visible.at(-1),currentEpoch);
 });

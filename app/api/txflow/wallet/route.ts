@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { collectTxflowResearch } from "@/lib/research-collection";
 import { parse } from "lossless-json";
 import { featureFlags } from "@/lib/features";
-import { TXFLOW_PERIODS, analyzeTxHolding, buildTxEpochReport, buildTxEpochReports, collectTxHistory, groupTxFills, normalizeTxAccount, normalizeTxFill, normalizeTxFunding, normalizeTxOverview, summarizeTxFills, summarizeTxFunding, txRecord, txflowAwardedEpochs, txflowCurrentEpoch, txflowEpochIds, txflowInWindows, txflowPeriodRange, txflowSelectionWindows, txflowPointsStatus, type TxflowEpochId, type TxflowPeriod, type TxflowWindow, type TxWalletReport, type TxScan, type TxFill, type TxHoldingAnalysis } from "@/lib/txflow-wallet";
+import { TXFLOW_PERIODS, analyzeTxHolding, buildTxEpochReport, buildTxEpochReports, collectTxHistory, groupTxFills, normalizeTxAccount, normalizeTxFill, normalizeTxFunding, normalizeTxOverview, summarizeTxFills, summarizeTxFunding, txRecord, txflowAwardedEpochs, txflowCurrentEpoch, txflowPendingEpochs, txflowEpochIds, txflowInWindows, txflowPeriodRange, txflowSelectionWindows, txflowPointsStatus, type TxflowEpochId, type TxflowPeriod, type TxflowWindow, type TxWalletReport, type TxScan, type TxFill, type TxHoldingAnalysis } from "@/lib/txflow-wallet";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,7 +26,12 @@ export async function POST(request: NextRequest) {
     windows = txflowSelectionWindows(period, now, awardedEpochs);
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid epoch period." }, { status: 400, headers }); }
   const { from } = range;
-  const currentEpoch = period === "AWARDED" ? txflowCurrentEpoch(now) : null;
+  const includePending = period === "AWARDED" || period === "ALLTIME";
+  const currentEpoch = includePending ? txflowCurrentEpoch(now) : null;
+  const epochIds = txflowEpochIds(period, awardedEpochs, now);
+  const pendingEpochs = includePending ? txflowPendingEpochs(now).filter(epoch => !epochIds.some(id => id === epoch.id)) : [];
+  const activityWindows = [range, ...pendingEpochs.map(epoch => epoch.range), ...(currentEpoch ? [currentEpoch.range] : [])];
+  const fetchFrom = activityWindows.some(window => window.from === null) ? null : Math.min(...activityWindows.map(window => window.from!));
   // RPC bounds are inclusive; completed epochs exclude the next day's midnight.
   const to = currentEpoch?.range.to ?? (range.endExclusive ? range.to - 1 : range.to);
   const signal = AbortSignal.any([request.signal, AbortSignal.timeout(50_000)]);
@@ -43,14 +48,14 @@ export async function POST(request: NextRequest) {
     }
   }
   // The live index caps pages at 300 rows. Allow enough windows for the previous scan capacity.
-  const options = { from, to, limit: 300, maxPages: 80 };
-  const historyRequest = { user: address, accountType: ["perp"], endTimeMs: to, limit: options.limit, ...(from === null ? {} : { startTimeMs: from }) };
+  const options = { from: fetchFrom, to, limit: 300, maxPages: 80 };
+  const historyRequest = { user: address, accountType: ["perp"], endTimeMs: to, limit: options.limit, ...(fetchFrom === null ? {} : { startTimeMs: fetchFrom }) };
   const fillsPromise = collectTxHistory((offset, endTimeMs) => read({ ...historyRequest, type: "userFills", offset, endTimeMs }), normalizeTxFill, options);
   const priorPromise = fillsPromise.then(scan => {
     const empty: TxScan<TxFill> = { rows: [], pages: 0, status: "complete", warnings: [] };
-    if (from === null || scan.status !== "complete" || scan.rows.length === 0) return empty;
+    if (fetchFrom === null || scan.status !== "complete" || scan.rows.length === 0) return empty;
     return collectTxHistory((offset, endTimeMs) => read({ type: "userFills", user: address, accountType: ["perp"], endTimeMs, limit: options.limit, offset }), normalizeTxFill,
-      { ...options, from: null, to: from - 1, maxPages: Math.max(0, options.maxPages - scan.pages) });
+      { ...options, from: null, to: fetchFrom - 1, maxPages: Math.max(0, options.maxPages - scan.pages) });
   });
   const [fillScan, fundingScan, overviewResult, accountResult, priorScan] = await Promise.all([
     fillsPromise,
@@ -65,7 +70,7 @@ export async function POST(request: NextRequest) {
   const selectedFunding = fundingScan.rows.filter(row => txflowInWindows(row.time, windows));
   const summary = fillScan.status === "unavailable" ? null : summarizeTxFills(selectedFills);
   if (summary?.excludedFeeTokens.length) warnings.push(`Fees in ${summary.excludedFeeTokens.join(", ")} are excluded from USDC fee totals; no exchange rate was assumed.`);
-  const holdingOptions = { from, to: range.to, endExclusive: range.endExclusive, windows, selectedComplete: fillScan.status === "complete", historyStatus: from === null ? fillScan.status : priorScan.status, historyPages: fillScan.pages + priorScan.pages };
+  const holdingOptions = { from, to: range.to, endExclusive: range.endExclusive, windows, selectedComplete: fillScan.status === "complete", historyStatus: fetchFrom === null ? fillScan.status : priorScan.status, historyPages: fillScan.pages + priorScan.pages };
   let holding: TxHoldingAnalysis;
   try { holding = analyzeTxHolding([...priorScan.rows, ...fillScan.rows], holdingOptions); }
   catch {
@@ -79,7 +84,8 @@ export async function POST(request: NextRequest) {
     fillsScan: { status: fillScan.status, pages: fillScan.pages, warnings: fillScan.warnings }, fundingScan: { status: fundingScan.status, pages: fundingScan.pages, warnings: fundingScan.warnings },
     summary, funding: fundingScan.status === "unavailable" ? null : summarizeTxFunding(selectedFunding), overview: overviewResult.data, account: accountResult.data, warnings, holding,
     awardedEpochs, windows: windows.map(window => ({ from: window.from === null ? null : new Date(window.from).toISOString(), to: new Date(window.to).toISOString(), endExclusive: window.endExclusive })),
-    epochs: buildTxEpochReports(history, fundingScan.rows, txflowEpochIds(period, awardedEpochs, now), now, epochScan),
+    epochs: buildTxEpochReports(history, fundingScan.rows, epochIds, now, epochScan),
+    pendingEpochs: pendingEpochs.map(epoch => buildTxEpochReport(history, fundingScan.rows, epoch, epochScan)),
     ...(currentEpoch ? { currentEpoch: buildTxEpochReport(history, fundingScan.rows, currentEpoch, epochScan) } : {}),
     ...groupTxFills(selectedFills) };
   const research = await collectTxflowResearch(report, body.research);

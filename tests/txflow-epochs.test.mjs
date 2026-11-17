@@ -9,6 +9,22 @@ const scan = { fillsStatus:'complete', fundingStatus:'complete', historyStatus:'
 let sequence = 0;
 const fill = (time, side='B', startPosition='0') => normalizeTxFill({instrumentId:'1',tid:String(++sequence),oid:String(sequence),symbol:'BTC-USDC',instrumentType:'perps',marginMode:'Cross',tradeSide:'Maker',side,sz:'1',px:'100',fee:'0.01',feeToken:'USDC',closedPnl:'0',time,startPosition});
 
+test('TxFlow invalidates cached epoch reports across Monday rollover and missing configured epochs',async()=>{
+  const {isTxflowScheduleCurrent}=await import('../lib/txflow-wallet.ts');
+  const before=at('2026-11-15T23:59:59Z'),after=at('2026-11-16T00:00:00Z');
+  const awarded=txflowAwardedEpochs(undefined,before);
+  const snapshot={period:'AWARDED',awardedEpochs:awarded,epochs:awarded.map(id=>({id})),currentEpoch:txflowCurrentEpoch(before)};
+  assert.equal(isTxflowScheduleCurrent(snapshot,before),true);
+  assert.equal(isTxflowScheduleCurrent(snapshot,after),false);
+  const refreshed={...snapshot,currentEpoch:txflowCurrentEpoch(after)};
+  assert.equal(isTxflowScheduleCurrent(refreshed,after),true);
+  const s1={...refreshed,period:'S1',epochs:txflowEpochIds('S1',awarded,after).map(id=>({id}))};
+  assert.equal(isTxflowScheduleCurrent(s1,after),true);
+  assert.equal(isTxflowScheduleCurrent({...s1,epochs:s1.epochs.filter(epoch=>epoch.id!=='EPOCH_5')},after),false);
+  const individual={...snapshot,period:'EPOCH_1',epochs:[{id:'EPOCH_1'}]};
+  assert.equal(isTxflowScheduleCurrent(individual,after),true);
+});
+
 test('explicit epoch boundaries include the entire final day without overlap or gaps', () => {
   const s0 = txflowPeriodRange('S0',afterDistribution), one = txflowPeriodRange('EPOCH_1',afterDistribution), two = txflowPeriodRange('EPOCH_2',afterDistribution);
   assert.equal(s0.to,start); assert.equal(one.from,start); assert.equal(one.to,split); assert.equal(two.from,split); assert.equal(two.to,end);

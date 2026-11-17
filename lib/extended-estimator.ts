@@ -5,6 +5,8 @@ export const EXTENDED_TOKENS_PER_POINT = EXTENDED_COMMUNITY_TOKENS / EXTENDED_TO
 export const EXTENDED_ALLOCATION = EXTENDED_COMMUNITY_TOKENS / EXTENDED_SUPPLY * 100;
 export const EXTENDED_FDV_PRESETS = [150_000_000, 250_000_000, 300_000_000, 500_000_000, 800_000_000, 1_000_000_000];
 export const EXTENDED_POINTS_SOURCE = "https://t.me/extended_updates/395";
+export const EXTENDED_FINAL_SNAPSHOT = "2026-11-06T00:00:00Z";
+export const EXTENDED_POINTS_PROGRAM_SOURCE = "https://docs.extended.exchange/extended-resources/points-program";
 
 export function extendedTokensForPoints(points: number | null) {
   if (points === null || !Number.isFinite(points) || points < 0 || points > EXTENDED_TOTAL_POINTS) return null;

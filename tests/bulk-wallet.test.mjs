@@ -22,6 +22,17 @@ test('BULK windows have contiguous half-open Saturday 13 UTC boundaries',()=>{
   assert.equal(epochs[8].id,'T8');assert.equal(epochs[8].completed,false);
   for(let i=1;i<epochs.length;i++)assert.equal(epochs[i].start,epochs[i-1].end);
 });
+
+test('BULK discards a cached calendar when Saturday rollover adds a trading week',async()=>{
+  const {isBulkScheduleCurrent}=await import('../lib/bulk-wallet.ts');
+  const cutoff=Date.parse('2026-11-14T13:00:00Z');
+  const before=bulkEpochs(cutoff-1),after=bulkEpochs(cutoff);
+  assert.equal(before.at(-1).id,'T10');assert.equal(after.at(-1).id,'T11');
+  assert.equal(isBulkScheduleCurrent(before,cutoff),false);
+  assert.equal(isBulkScheduleCurrent(after,cutoff+86400000),true);
+  const stale=after.map(epoch=>epoch.id==='T10'?{...epoch,completed:false}:epoch);
+  assert.equal(isBulkScheduleCurrent(stale,cutoff),false);
+});
 test('legacy fee cash flows become positive paid fees; documented cost signs stay unchanged',()=>{
   const legacy=normalizeBulkFill(raw(),user);assert.equal(legacy.fee,'0.035');assert.equal(legacy.role,'Taker');assert.equal(legacy.notional,'100');
   const cost=normalizeBulkFill(raw({tradeId:'621278412:4',fee:'0.035',takerFee:'0.035'}),user);assert.equal(cost.fee,'0.035');

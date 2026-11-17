@@ -9,7 +9,7 @@ import { useExtendedEstimate } from "@/hooks/use-extended-estimate";
 import { parsePoints } from "@/lib/estimator";
 import { featureFlags } from "@/lib/features";
 import { EXTENDED_REFERRAL_CODE, EXTENDED_REFERRAL_URL } from "@/lib/projects";
-import { EXTENDED_ALLOCATION, EXTENDED_COMMUNITY_TOKENS, EXTENDED_FDV_PRESETS, EXTENDED_POINTS_SOURCE, EXTENDED_SUPPLY, EXTENDED_TOKENS_PER_POINT, EXTENDED_TOTAL_POINTS, estimateExtended, extendedTokensForPoints } from "@/lib/extended-estimator";
+import { EXTENDED_ALLOCATION, EXTENDED_COMMUNITY_TOKENS, EXTENDED_FDV_PRESETS, EXTENDED_FINAL_SNAPSHOT, EXTENDED_POINTS_PROGRAM_SOURCE, EXTENDED_POINTS_SOURCE, EXTENDED_SUPPLY, EXTENDED_TOKENS_PER_POINT, EXTENDED_TOTAL_POINTS, estimateExtended, extendedTokensForPoints } from "@/lib/extended-estimator";
 import { EXTENDED_PREMARKET_URL } from "@/lib/extended-premarket";
 
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
@@ -105,7 +105,7 @@ export default function ExtendedCalculator() {
           <section className="ex-tokenomics ex-panel" aria-labelledby="ex-tokenomics-heading"><div className="ex-tokenomics-heading"><p className="ex-eyebrow">03 / THE TOKEN MODEL</p><h2 id="ex-tokenomics-heading">Token supply and allocation</h2></div><dl><div><dt>Genesis supply</dt><dd>{number.format(EXTENDED_SUPPLY)} <span>XTEN</span></dd></div><div><dt>Community allocation</dt><dd>{number.format(EXTENDED_COMMUNITY_TOKENS)} <span>XTEN · {EXTENDED_ALLOCATION}%</span></dd></div><div><dt>Total Xpoints</dt><dd>{number.format(EXTENDED_TOTAL_POINTS)} <span>final programme total</span></dd></div></dl></section>
         </div>
       </div>
-      <section className="ex-method" aria-labelledby="ex-method-heading"><div><span className="ex-method-mark" aria-hidden="true">↳</span><h2 id="ex-method-heading">Calculation method</h2></div><p>Your XTEN = your Xpoints × (300M ÷ 70M). Estimated USD value = your XTEN × (FDV ÷ 1B).</p><p>Calculations use the full conversion ratio and round for display. Individual allocations depend on Extended’s eligibility and claim requirements. The starting $500M FDV is a manual scenario.</p></section>
+      <section className="ex-method" aria-labelledby="ex-method-heading"><div><span className="ex-method-mark" aria-hidden="true">↳</span><h2 id="ex-method-heading">Calculation method</h2></div><p>Your XTEN = your Xpoints × (300M ÷ 70M). Estimated USD value = your XTEN × (FDV ÷ 1B).</p><p>Points distributions have ended. Final snapshot: <time dateTime={EXTENDED_FINAL_SNAPSHOT}>6 November 2026, 00:00 UTC</time>. <a href={EXTENDED_POINTS_PROGRAM_SOURCE} target="_blank" rel="noopener noreferrer">Points program documentation ↗</a></p><p>Calculations use the full conversion ratio and round for display. Individual allocations depend on Extended’s eligibility and claim requirements. The starting $500M FDV is a manual scenario.</p></section>
     </main>
     <footer className="ex-footer"><span>EXTENDED / UNOFFICIAL COMMUNITY TOOL</span><a href="https://extended.exchange/" target="_blank" rel="noopener noreferrer">Brand by Extended ↗</a></footer>
   </div></div>;

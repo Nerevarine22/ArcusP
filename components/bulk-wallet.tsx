@@ -2,7 +2,7 @@
 import Link from "next/link";
 import {useEffect,useRef,useState,type FormEvent} from "react";
 import {useBulkWallet} from "@/hooks/use-bulk-wallet";
-import {bulkEpochs,isBulkAddress,type BulkWalletReport} from "@/lib/bulk-wallet";
+import {bulkEpochs,isBulkAddress,isBulkScheduleCurrent,type BulkWalletReport} from "@/lib/bulk-wallet";
 import {parsePoints,sumPointInputs} from "@/lib/estimator";
 import {featureFlags} from "@/lib/features";
 
@@ -25,7 +25,7 @@ export default function BulkWallet(){
   useEffect(()=>{setNow(Date.now());return()=>controller.current?.abort();},[]);
   useEffect(()=>{
     if(!ready)return;
-    try{const saved=JSON.parse(sessionStorage.getItem(cacheKey)??"null") as BulkWalletReport|null;setReport(saved?.version===1&&saved.address===address?saved:null);}catch{setReport(null);}
+    try{const saved=JSON.parse(sessionStorage.getItem(cacheKey)??"null") as BulkWalletReport|null;setReport(saved?.version===1&&saved.address===address&&Array.isArray(saved.epochs)&&isBulkScheduleCurrent(saved.epochs,Date.now())?saved:null);}catch{setReport(null);}
   },[ready,address]);
   const epochs=report?.epochs??(now===null?[]:bulkEpochs(now));
   const selected=report?.periods.find(row=>row.id===settings.selected)??report?.periods.find(row=>row.id==="ALL");

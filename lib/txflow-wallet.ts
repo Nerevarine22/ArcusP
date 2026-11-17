@@ -149,6 +149,14 @@ export function txflowReportEpochs(report: Pick<TxWalletReport, "epochs" | "pend
     .sort((a, b) => (a.range.from === null ? -Infinity : Date.parse(a.range.from)) - (b.range.from === null ? -Infinity : Date.parse(b.range.from)));
 }
 
+export function isTxflowScheduleCurrent(report: Pick<TxWalletReport, "period" | "epochs" | "awardedEpochs" | "currentEpoch">, now: number): boolean {
+  if (!Array.isArray(report.epochs) || !Array.isArray(report.awardedEpochs)) return false;
+  const ids = txflowEpochIds(report.period, report.awardedEpochs, now);
+  if (ids.join(",") !== report.epochs.map(epoch => epoch.id).join(",")) return false;
+  return report.period !== "AWARDED" && report.period !== "ALLTIME"
+    || report.currentEpoch?.id === txflowCurrentEpoch(now)?.id;
+}
+
 export function txRecord(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Unexpected TxFlow response.");
   return value as Record<string, unknown>;

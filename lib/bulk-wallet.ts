@@ -9,6 +9,13 @@ export function bulkEpochs(now: number): BulkEpoch[] {
   for (let index = 0; index < 104 && BULK_TRADING_START + index * week <= now; index++) epochs.push({ id: `T${index + 1}`, label: `Trading week ${index + 1}`, start: BULK_TRADING_START + index * week, end: BULK_TRADING_START + (index + 1) * week, predeposit: false, completed: now >= BULK_TRADING_START + (index + 1) * week });
   return epochs;
 }
+export function isBulkScheduleCurrent(epochs: readonly BulkEpoch[], now: number): boolean {
+  const current = bulkEpochs(now);
+  return epochs.length === current.length && current.every((epoch, index) => {
+    const saved = epochs[index];
+    return saved.id === epoch.id && saved.start === epoch.start && saved.end === epoch.end && saved.completed === epoch.completed;
+  });
+}
 export function isBulkAddress(value: unknown): value is string {
   if (typeof value !== "string" || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value)) return false;
   const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";

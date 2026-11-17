@@ -9,7 +9,7 @@ import TxflowExecutionProfile from "@/components/txflow-execution-profile";
 import { useTxflowWallet } from "@/hooks/use-txflow-wallet";
 import ResearchStorageStatus from "@/components/research-storage-status";
 import { parsePoints, sumPointInputs } from "@/lib/estimator";
-import { TXFLOW_EPOCHS, TXFLOW_PERIODS, txflowReceivedEpochs, txflowEpochIds, txflowReportEpochs, type TxflowEpochId, type TxflowReportEpochId, type TxflowPeriod, type TxWalletReport } from "@/lib/txflow-wallet";
+import { TXFLOW_EPOCHS, TXFLOW_PERIODS, isTxflowScheduleCurrent, txflowReceivedEpochs, txflowEpochIds, txflowReportEpochs, type TxflowEpochId, type TxflowReportEpochId, type TxflowPeriod, type TxWalletReport } from "@/lib/txflow-wallet";
 
 const moneyFormat = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 const pointCostFormat = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 6 });
@@ -33,7 +33,8 @@ export default function TxflowWallet({ initialTheme }: { initialTheme: "light" |
   useEffect(() => { setNow(Date.now()); const timer = setInterval(() => setNow(Date.now()), 60_000); return () => clearInterval(timer); }, []);
   const received = txflowReceivedEpochs(settings, normalizedAddress, now);
   const receiptKey = received.join(",");
-  const report = storedReport?.address === normalizedAddress && storedReport.period === period && (period !== "AWARDED" || storedReport.awardedEpochs?.join(",") === receiptKey) ? storedReport : null;
+  const report = storedReport?.address === normalizedAddress && storedReport.period === period && isTxflowScheduleCurrent(storedReport, now)
+    && (period !== "AWARDED" || storedReport.awardedEpochs?.join(",") === receiptKey) ? storedReport : null;
   const epochs = report ? txflowReportEpochs(report) : [];
   const selectedEpoch = epochs.find(epoch => epoch.id === selectedEpochId)
     ?? [...epochs].reverse().find(epoch => received.some(id => id === epoch.id)) ?? epochs[0] ?? null;

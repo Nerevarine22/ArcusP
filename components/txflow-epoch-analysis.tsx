@@ -33,12 +33,14 @@ export default function TxflowEpochAnalysis({ report, points, received, selected
   return <section className="tf-epoch-analysis tf-panel" aria-labelledby="tf-epochs-heading">
     <div className="tf-wallet-section-title"><div><span className="tf-eyebrow">EPOCH COMPARISON / MATCHED ACTIVITY</span><h2 id="tf-epochs-heading">Epoch analysis</h2></div></div>
     <p className="tf-help">Choose an epoch to see its trading activity. Enter points directly on its card.</p>
-    <div className={`tf-epoch-cards ${styles.grid}`} role="group" aria-label="Select an epoch">{epochs.map(epoch => {
+    <div className={`tf-epoch-cards ${styles.grid} ${styles.txflowGrid}`} role="group" aria-label="Select an epoch">{epochs.map(epoch => {
       const awarded = hasReceived(epoch.id);
       const known = Object.hasOwn(TXFLOW_EPOCHS, epoch.id) ? epoch.id as TxflowEpochId : null;
       const status = !epoch.completed ? "In progress" : awarded ? "Completed" : "Awaiting drop";
       const distribution = known ? shortDate.format(new Date(TXFLOW_EPOCHS[known].distribution)) : "Pending";
-      return <EpochActivityCard key={epoch.id} label={epoch.label} status={status} dates={epoch.dates}
+      const cardDates = epoch.range.from === null ? `Before ${shortDate.format(new Date(epoch.range.to))}`
+        : shortDate.formatRange(new Date(epoch.range.from), new Date(Date.parse(epoch.range.from) + 7 * 86_400_000 - 1));
+      return <EpochActivityCard key={epoch.id} label={epoch.label} status={status} dates={cardDates}
         distribution={distribution} selected={selected.id === epoch.id} points={inputFor(epoch.id)}
         placeholder={awarded ? "Enter points" : "Pending"} volume={epoch.summary?.volume}
         maxPoints={maxPoints} maxVolume={maxVolume} maxLength={100}

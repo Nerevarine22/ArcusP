@@ -17,6 +17,18 @@
 .track i { display: block; height: 100%; background: var(--epoch-volume); }
 .pointsTrack { margin-top: 9px; }
 .pointsTrack i { background: var(--epoch-accent); }
+.txflowGrid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.txflowGrid .top { flex-direction: column; align-items: flex-start; gap: 5px; }
+.txflowGrid .select { line-height: 1.4; }
+.txflowGrid .top small { line-height: 1.5; }
+.txflowGrid .dates { min-height: 3em; margin-top: 8px; }
+.txflowGrid .points input { flex: 1; width: 100%; min-width: 0; }
+@media (max-width: 1100px) {
+  .txflowGrid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
+@media (max-width: 800px) {
+  .txflowGrid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
 @media (max-width: 540px) {
   .grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .card { padding: 11px; }

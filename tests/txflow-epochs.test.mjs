@@ -223,7 +223,7 @@ test('the Monday rollover preserves all pending weeks without overlap or adding 
   assert.deepEqual(report.pendingEpochs[0].holding,buildTxEpochReport(fills.filter(row=>row.time<cutoff),funding,pending,scan).holding);
 
   const later = cutoff + 2*7*86400000;
-  assert.deepEqual(txflowPendingEpochs(later).map(epoch=>epoch.id),['EPOCH_5','EPOCH_6','EPOCH_7']);
+  assert.deepEqual(txflowPendingEpochs(later).map(epoch=>epoch.id),['EPOCH_6','EPOCH_7']);
   assert.equal(txflowCurrentEpoch(later).id,'EPOCH_8');
   assert.equal(txflowPendingEpochs(at('2026-11-10T12:00:00Z')).some(epoch=>epoch.id==='EPOCH_4'),false);
   assert.equal(txflowPendingEpochs(at('2026-11-09T12:00:00Z')).some(epoch=>epoch.id==='EPOCH_4'),true);
@@ -237,4 +237,35 @@ test('epoch selection keeps legacy reports readable and avoids duplicate cards f
   const visible = txflowReportEpochs({epochs,pendingEpochs:[epochs[1]],currentEpoch});
   assert.equal(visible.length,3);
   assert.equal(visible.at(-1),currentEpoch);
+});
+
+test('Epoch 5 joins awarded totals on 17 November and Epoch 6 remains separate without duplicate cards', () => {
+  const distributed = at('2026-11-17T12:00:00Z'), cutoff = at('2026-11-16T00:00:00Z');
+  const address = '0x4c4e9818925a5bdaf5f50944ffbe9d297e58563b';
+  const ids = ['S0','EPOCH_1','EPOCH_2','EPOCH_3','EPOCH_4','EPOCH_5'];
+  assert.deepEqual(txflowAwardedEpochs(undefined,distributed),ids);
+  assert.deepEqual(txflowReceivedEpochs({received:{}},address,distributed),ids);
+  assert.deepEqual(txflowAwardedEpochs(undefined,at('2026-11-16T23:59:59.999Z')),ids.slice(0,-1));
+  assert.deepEqual(txflowPendingEpochs(distributed),[]);
+  assert.equal(txflowCurrentEpoch(distributed).id,'EPOCH_6');
+  const range = txflowPeriodRange('EPOCH_5',distributed);
+  assert.deepEqual(range,{from:at('2026-11-09T00:00:00Z'),to:cutoff,endExclusive:true});
+  assert.equal(txflowPeriodRange('AWARDED',distributed).to,cutoff);
+  const fills = [fill(range.from-1),fill(range.from),fill(cutoff-1),fill(cutoff)];
+  const funding = fills.map(row=>({key:row.key,time:row.time,market:row.market,amount:'1'}));
+  const windows = txflowSelectionWindows('AWARDED',distributed);
+  assert.equal(summarizeTxFills(fills.filter(row=>txflowInWindows(row.time,windows))).fills,3);
+  assert.equal(summarizeTxFunding(funding.filter(row=>txflowInWindows(row.time,windows))).count,3);
+  const epochs = buildTxEpochReports(fills,funding,ids,distributed,scan);
+  assert.equal(epochs.at(-1).summary.volume,'200');
+  const currentEpoch = buildTxEpochReport(fills,funding,txflowCurrentEpoch(distributed),scan);
+  const visible = txflowReportEpochs({epochs,pendingEpochs:[],currentEpoch});
+  assert.deepEqual(visible.map(epoch=>epoch.id),[...ids,'EPOCH_6']);
+  assert.equal(currentEpoch.summary.fills,1);
+  const saved = parseTxflowWalletSettings(JSON.stringify({address,period:'EPOCH_5',
+    points:{[`${address}:EPOCH_4`]:'40',[`${address}:EPOCH_5`]:'50'},received:{[`${address}:EPOCH_5`]:true}}));
+  assert.equal(saved.period,'EPOCH_5');
+  assert.equal(saved.points[`${address}:EPOCH_4`],'40');
+  assert.equal(saved.points[`${address}:EPOCH_5`],'50');
+  assert.equal(saved.received[`${address}:EPOCH_5`],true);
 });

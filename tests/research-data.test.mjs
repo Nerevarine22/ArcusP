@@ -32,7 +32,8 @@ test('automatic research works without preferences and rejects invalid manual po
   assert.equal(researchInput({ points: { EPOCH_1: ' 10,25 ' } }).points.EPOCH_1, '10.25');
   assert.equal(researchInput({ points: { EPOCH_3: '42.5' } }).points.EPOCH_3, '42.5');
   assert.equal(researchInput({ points: { EPOCH_4: ' 53,25 ', EPOCH_5: '10' } }).points.EPOCH_4, '53.25');
-  assert.equal(researchInput({ points: { EPOCH_5: '10' } }).points.EPOCH_5, undefined);
+  assert.equal(researchInput({ points: { EPOCH_5: ' 64,5 ' } }).points.EPOCH_5, '64.5');
+  assert.equal(researchInput({ points: { EPOCH_6: '10' } }).points.EPOCH_6, undefined);
 });
 
 test('Arcus research aligns canonical weekly gains and preserves exact fees, rebates, holding and liquidity mix', () => {

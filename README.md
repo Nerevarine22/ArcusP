@@ -1,5 +1,80 @@
 # Perp tools
 
+## Multi-project wallet comparison
+
+Open `/compare` directly; this page is not linked from the home page. Select two to five
+projects using their logo cards, then confirm the selection. Arcus, TxFlow,
+RISEx, Entropy and Variational are supported. Enter one public EVM address per API-supported project,
+optional points alongside each wallet, and combined net deposits. The same
+address on different exchanges is supported; one account cannot be counted twice.
+Use **Change projects** to revise the set. Matching wallets, reports and rewards
+are retained; a changed project set clears the combined deposit. Existing
+two-wallet browser data migrates without losing its inputs or matching reports.
+
+Variational uses manual current equity and points; its wallet address is optional.
+Enter equity in USD including open-position PnL. No trade API is called for this
+project. Its balance contributes to the combined equity calculation, while trade
+PnL, fees and funding remain unknown. Loaded volume and execution costs cover
+API-supported accounts only. Variational point scenarios start with the existing
+calculator's editable 10M pool and 32% allocation. The history-based PnL mode is
+unavailable when a manual-equity project is selected.
+
+The comparison requests available history independently of point distributions.
+It shows each wallet and combined net PnL, current equity, executed volume,
+maker/taker execution fees and funding. The default **Account equity** mode uses
+combined current equity minus manually entered total net deposits (deposits
+minus withdrawals for the selected accounts). Transfers between these accounts
+cancel out. Equity already includes unrealized PnL, execution fees and funding;
+these amounts are not deducted again. This mode works with incomplete trade
+history when every selected equity is available. Blank net deposits remain
+unknown; an explicitly entered zero is supported. Inputs persist and net deposits
+are cleared when either project or wallet changes.
+
+**Refresh balances** calls `/api/compare/balance` independently of history scans.
+Account balances are added directly; net cost is combined net deposits minus
+that sum, and net PnL is the opposite sign. Execution fees, funding and past PnL
+are never deducted from this balance-based result again. Each API balance has
+its own source and timestamp. Saved snapshots older than a minute, including
+legacy snapshots without balance-source metadata, are refreshed once on entry.
+Failed balance requests remain unknown instead of reusing an old amount.
+
+Arcus balances sum `/v1/account.equity` for subaccounts 0–9; TxFlow uses perpetual
+`marginSummary.accountValue`; RISEx uses `summary.total_account_value`. Entropy
+queries `userAbstraction`: unified accounts use `spotClearinghouseState` USDC
+`total` once, including holds; standard accounts use the `io` DEX account value.
+The unified balance must not be added to DEX equity or reduced by holds again.
+Its account scope is the shared Hyperliquid USDC balance, while trade analysis
+continues to cover only `io:` markets. Unsupported portfolio modes stay unknown
+until a complete valuation is implemented. Variational remains manual.
+
+**Trading history** remains available as an independent calculation and in the
+comparison table. For TxFlow, RISEx and Entropy, history net PnL is
+loaded realized trading PnL minus net execution fees plus funding and current
+unrealized PnL. Arcus uses current equity minus cumulative net deposits across
+subaccounts 0–9, so fees and funding are already included. Entropy includes only
+`io:` markets. Missing or incomplete required data prevents a combined history net PnL;
+volume and fees are explicitly labeled as loaded amounts.
+
+Inputs and normalized results persist in the browser under `perp-wallet-pair-v1`.
+Manual points, FDV, assumed total points and allocation can be entered for each
+Arcus, TxFlow, RISEx or Variational wallet. Blank points explicitly exclude that reward;
+Entropy has no points model. Net result including estimated rewards is the
+selected base PnL plus the proportional point values. Fees and funding are
+already in base PnL. A two-project grid varies the FDVs independently and shows
+above/below break-even estimates, reward coverage of the net loss and each
+project's conditional break-even FDV with all other project FDVs fixed. With
+three rewarded projects, choose the row and column project for the grid; other
+rewards stay at their selected FDVs and remain included in every total. Legacy
+wallets on the same project share FDV/pool/allocation and cannot exceed its
+total points pool together. Use points from the same period as the selected
+account PnL. Token eligibility, allocations, conversion and realizable proceeds
+remain assumptions. Changing a wallet clears its points and assumptions.
+The JSON export includes all selected records, their source timestamps, completeness
+flags, combined metrics, reward assumptions and the equity calculation with manual net deposit
+provenance. This page does not save a paired record to the
+research database, match hedge legs or verify delta neutrality. API snapshots
+are read independently and may have slightly different timestamps.
+
 ## Wallet research collection
 
 Arcus and TxFlow wallet analyses are automatically saved to a private Neon PostgreSQL dataset.

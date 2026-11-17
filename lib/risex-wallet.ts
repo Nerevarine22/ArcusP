@@ -34,7 +34,7 @@ export function riseMarketNames(value: unknown) {
   }));
 }
 
-export function riseFill(value: unknown): TxFill {
+export function riseFill(value: unknown): TxFill & { closedPnlKnown: boolean } {
   const row = riseRecord(value);
   const instrument = text(row.market_id);
   const chain = riseRecord(row.blockchain_data);
@@ -48,6 +48,7 @@ export function riseFill(value: unknown): TxFill {
     key: `${text(row.id)}:${text(row.order_id)}`, market: `Market #${instrument}`, instrument,
     side: row.side, role, size: txUsd(size), notional: txUsd((price * size + scale / BigInt(2)) / scale),
     fee: txUsd(txAtoms(row.fee)), feeToken: "USDC", closedPnl: optionalAmount(row.realized_pnl) ?? "0",
+    closedPnlKnown: row.realized_pnl != null && row.realized_pnl !== "",
     time: riseTime(row.time), sequence: block + log.padStart(10, "0"),
     marginMode: String(row.margin_mode ?? 0),
     startPosition: beforeEntry === "0" ? "0" : null,
@@ -157,7 +158,7 @@ function weekStart(time: number) {
 }
 
 export function buildRisexReport(options: {
-  address: string; now: number; trades: TxScan<TxFill>; funding: TxScan<TxFunding>;
+  address: string; now: number; trades: TxScan<TxFill & { closedPnlKnown?: boolean }>; funding: TxScan<TxFunding>;
   portfolio: ReturnType<typeof risePortfolio> | null; transfers: ReturnType<typeof riseTransfers> | null;
   epoch: ReturnType<typeof riseEpoch>; warnings: string[];
 }) {
@@ -205,6 +206,7 @@ export function buildRisexReport(options: {
   return {
     version: 3, address, fetchedAt: now,
     tradesStatus: trades.status, fundingStatus: funding.status,
+    tradingPnlComplete: trades.status === "complete" && history.every(fill => fill.closedPnlKnown !== false),
     warnings: [...trades.warnings, ...funding.warnings, ...warnings],
     total: range(null, now),
     awarded: combined("awarded"),

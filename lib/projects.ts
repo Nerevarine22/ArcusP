@@ -57,7 +57,7 @@ export const projects: Project[] = [
     tools: ["Wallet analytics"],
     href: "/entropy",
     walletHref: "/entropy",
-    website: "https://pro.entropy.io/?r=quasartitan452",
+    website: "https://pro.entropy.io/?r=atoms",
   },
   {
     id: "bulk",

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import RisexHeader from "@/components/risex-header";
 import RisexEpochCards, { risexEpochStatus } from "@/components/risex-epoch-cards";
 import { parsePoints, sumPointInputs } from "@/lib/estimator";
-import { risexEpochs, risexRollingDays, risexScopeEpochs, risexScopes } from "@/lib/risex-epochs";
+import { isRisexScheduleCurrent, risexEpochs, risexRollingDays, risexScopeEpochs, risexScopes } from "@/lib/risex-epochs";
 import { isRisexWallet } from "@/lib/risex-points";
 import type { RisexReport } from "@/lib/risex-wallet";
 
@@ -67,7 +67,8 @@ export default function RisexWallet() {
     setPointsByPeriod(savedPoints(savedAddress, risexEpochs(started, null).map(epoch => epoch.id)));
     try {
       const saved = JSON.parse(sessionStorage.getItem(reportKey) ?? "null") as RisexReport | null;
-      if (saved?.version === 3 && saved.address === savedAddress.trim().toLowerCase()) {
+      if (saved?.version === 3 && saved.address === savedAddress.trim().toLowerCase()
+        && Array.isArray(saved.epochs) && isRisexScheduleCurrent(saved.epochs, started)) {
         setReport(saved);
         setPointsByPeriod(savedPoints(saved.address, saved.epochs.map(epoch => epoch.id), saved.weeks.map(week => String(week.from))));
       }

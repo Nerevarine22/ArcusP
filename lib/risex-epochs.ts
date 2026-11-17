@@ -26,6 +26,17 @@ export function risexScopeEpochs<T extends RisexEpoch>(epochs: T[], scope: strin
   return epochs.filter(epoch => epoch.id === scope);
 }
 
+function epochStatus(epoch: Omit<RisexEpoch, "status">, now: number): RisexEpoch["status"] {
+  return epoch.from !== null && now < epoch.from ? "upcoming"
+    : now < epoch.to ? "in-progress" : now < epoch.distribution ? "awaiting-drop" : "completed";
+}
+
+export function isRisexScheduleCurrent(epochs: readonly RisexEpoch[], now: number): boolean {
+  const ids = new Set(epochs.map(epoch => epoch.id));
+  return risexEpochs(now, null).every(epoch => ids.has(epoch.id))
+    && epochs.every(epoch => epoch.status === epochStatus(epoch, now));
+}
+
 export function risexEpochs(now: number, upcoming: RisexUpcomingEpoch | null): RisexEpoch[] {
   const schedule: Omit<RisexEpoch, "status">[] = [{
     id: "preseason", label: "Pre-season · Retro", from: null, to: seasonStart,
@@ -33,7 +44,8 @@ export function risexEpochs(now: number, upcoming: RisexUpcomingEpoch | null): R
   }];
 
   // Season 1 accrues Monday–Sunday UTC. The listed drops are the following Tuesday.
-  for (let index = 0; index < 16; index++) {
+  const startedWeeks = Math.max(0, Math.floor((now - seasonStart) / risexWeekMs) + 1);
+  for (let index = 0; index < startedWeeks; index++) {
     const from = seasonStart + index * risexWeekMs;
     const to = from + risexWeekMs;
     schedule.push({ id: `epoch:${from}`, label: `Week ${index + 1}`, from, to, distribution: to + dayMs + 14 * 3_600_000 });
@@ -49,9 +61,6 @@ export function risexEpochs(now: number, upcoming: RisexUpcomingEpoch | null): R
     else schedule[existing] = live;
   }
 
-  return schedule.filter(epoch => epoch.from === null || epoch.from <= now || epoch.from === upcoming?.from).map(epoch => {
-    const status = epoch.from !== null && now < epoch.from ? "upcoming"
-      : now < epoch.to ? "in-progress" : now < epoch.distribution ? "awaiting-drop" : "completed";
-    return { ...epoch, status };
-  });
+  return schedule.filter(epoch => epoch.from === null || epoch.from <= now || epoch.from === upcoming?.from)
+    .map(epoch => ({ ...epoch, status: epochStatus(epoch, now) }));
 }

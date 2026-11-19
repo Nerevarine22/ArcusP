@@ -44,7 +44,7 @@ export const projects: Project[] = [
     id: "variational",
     name: "Variational",
     status: "available",
-    description: "Estimate point value using FDV scenarios and Polymarket probabilities.",
+    description: "Estimate point value using Lighter premarket prices and FDV scenarios.",
     tools: ["Points calculator"],
     href: "/variational",
     website: "https://omni.variational.io/?ref=OMNIATOMS",

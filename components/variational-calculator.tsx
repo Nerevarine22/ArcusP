@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
 import NumberTransition from "@/components/number-transition";
 import ReferralOffer from "@/components/referral-offer";
 import { useVariationalEstimate } from "@/hooks/use-variational-estimate";
@@ -9,14 +8,12 @@ import { useVariationalPremarket } from "@/hooks/use-variational-premarket";
 import { estimate, parsePoints } from "@/lib/estimator";
 import { featureFlags } from "@/lib/features";
 import { VARIATIONAL_ALLOCATION, VARIATIONAL_FDV_PRESETS, VARIATIONAL_TOKEN_SOURCE } from "@/lib/variational-estimator";
-import { VARIATIONAL_EVENT, type VariationalMarketSnapshot } from "@/lib/variational-market";
 import { VARIATIONAL_PREMARKET_URL, variationalPremarketFdv } from "@/lib/variational-premarket";
 
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const precise = new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 });
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 const unitUsd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 4, maximumFractionDigits: 4 });
-const percent = new Intl.NumberFormat("en-US", { style: "percent", maximumFractionDigits: 1 });
 const date = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "UTC" });
 const fdvLabel = (value: number) => value >= 1e9 ? `$${number.format(value / 1e9)}B` : `$${number.format(value / 1e6)}M`;
 const money = (value: number | undefined, unit = false) => value === undefined ? "—" : (unit ? unitUsd : usd).format(value);
@@ -41,28 +38,6 @@ export default function VariationalCalculator() {
   const result = validFdv && validTotal && points !== null ? estimate(fdv, VARIATIONAL_ALLOCATION, total, points) : null;
   const unit = validFdv && validTotal ? estimate(fdv, VARIATIONAL_ALLOCATION, total, 0) : null;
   const tokens = result && validSupply ? supply * VARIATIONAL_ALLOCATION / 100 * (points! / total!) : undefined;
-  const [snapshot, setSnapshot] = useState<VariationalMarketSnapshot | null>(null);
-  const [loading, setLoading] = useState(true), [marketError, setMarketError] = useState("");
-  const controller = useRef<AbortController | null>(null);
-  const load = useCallback(async () => {
-    controller.current?.abort();
-    const request = new AbortController(); controller.current = request;
-    setLoading(true); setMarketError("");
-    try {
-      const response = await fetch("/api/variational/fdv", { cache: "no-store", signal: request.signal });
-      if (!response.ok) throw new Error("Market data could not be loaded. Manual scenarios remain available.");
-      const data = await response.json() as VariationalMarketSnapshot;
-      if (!request.signal.aborted) setSnapshot(data);
-    } catch (cause) {
-      if (!request.signal.aborted) { setSnapshot(null); setMarketError(cause instanceof Error ? cause.message : "Market data could not be loaded."); }
-    } finally { if (!request.signal.aborted) setLoading(false); }
-  }, []);
-  useEffect(() => { void load(); return () => controller.current?.abort(); }, [load]);
-  const median = snapshot?.median;
-  const marketEstimate = median?.kind === "estimate" ? median : null;
-  const marketStatus = loading ? "Loading" : snapshot?.status === "ready" ? "Connected" : snapshot?.status === "partial" ? "Partial data" : "Unavailable";
-  const selectedThreshold = snapshot?.thresholds.find(row => row.thresholdUsd === fdv);
-  const selectedProbability = selectedThreshold?.yesProbability ?? selectedThreshold?.lastKnownProbability;
   const rows = [{ id: "premarket", value: premarketFdv, premarket: true },
     ...VARIATIONAL_FDV_PRESETS.map(value => ({ id: String(value), value, premarket: false }))];
 
@@ -94,30 +69,18 @@ export default function VariationalCalculator() {
         <div className="va-analysis">
           <section className="va-panel va-matrix" aria-labelledby="va-matrix-heading"><div className="va-panel-heading va-matrix-heading"><div><p className="va-eyebrow">02 / SCENARIOS</p><h2 id="va-matrix-heading">Value estimates by FDV</h2></div><span className="va-grid-label">SELECT A ROW</span></div>
             <p className="va-table-help">{validTotal ? `${number.format(total)} total points` : "Set a total points pool"} · 32% Genesis allocation</p>
-            <div className="va-table-wrap" data-lenis-prevent-horizontal><table className="va-table"><caption className="sr-only">Lighter premarket valuation followed by fixed Variational FDV scenarios, Polymarket probabilities, VAR price and illustrative allocation, and estimated USD value.</caption><thead><tr><th scope="col">FDV</th><th scope="col"><span className="va-odds-label">Odds <img src="/brand/extended/polymarket.png" alt="Polymarket" width="13" height="13" /></span></th><th scope="col">VAR price*</th><th scope="col">VAR allocation*</th><th scope="col">Your value</th></tr></thead><tbody>{rows.map(({ id, value: row, premarket: isPremarket }) => {
+            <div className="va-table-wrap" data-lenis-prevent-horizontal><table className="va-table"><caption className="sr-only">Lighter premarket valuation followed by fixed Variational FDV scenarios, VAR price and illustrative allocation, and estimated USD value.</caption><thead><tr><th scope="col">FDV</th><th scope="col">VAR price*</th><th scope="col">VAR allocation*</th><th scope="col">Your value</th></tr></thead><tbody>{rows.map(({ id, value: row, premarket: isPremarket }) => {
               const cell = validTotal && row !== null ? estimate(row, VARIATIONAL_ALLOCATION, total, points !== null && !pointsError ? points : 0) : null;
               const active = isPremarket ? premarketSelected : !premarketSelected && fdv === row;
-              const threshold = isPremarket ? undefined : snapshot?.thresholds.find(item => item.thresholdUsd === row);
-              const probability = threshold?.yesProbability ?? threshold?.lastKnownProbability;
               const label = row !== null ? fdvLabel(row) : premarketLoading ? "Loading…" : premarket ? "Set supply" : "Unavailable";
-              return <tr key={id} className={`${isPremarket ? "va-premarket-row " : ""}${active ? "va-selected-row" : ""}`} onClick={() => { if (row !== null) update(isPremarket ? { valuationMode: "premarket" } : { fdvInput: String(row), valuationMode: "manual" }); }}><th scope="row"><button type="button" disabled={row === null} aria-label={isPremarket ? "Use Lighter premarket valuation" : `Select ${label} FDV`} aria-pressed={active}><i aria-hidden="true" /><span>{label}{isPremarket && <small>LIGHTER PREMARKET</small>}</span></button></th><td title={threshold?.quoteAsOf ? `Quote: ${date.format(new Date(threshold.quoteAsOf))} UTC` : undefined}>{probability !== null && probability !== undefined ? percent.format(probability) : "—"}</td><td>{money(isPremarket ? premarket?.price : validSupply && row !== null ? row / supply : undefined, true)}</td><td>{cell && points !== null && !pointsError && validSupply ? number.format(supply * VARIATIONAL_ALLOCATION / 100 * (points / total!)) : "—"}</td><td>{points !== null && !pointsError ? money(cell?.value) : "—"}</td></tr>;
+              return <tr key={id} className={`${isPremarket ? "va-premarket-row " : ""}${active ? "va-selected-row" : ""}`} onClick={() => { if (row !== null) update(isPremarket ? { valuationMode: "premarket" } : { fdvInput: String(row), valuationMode: "manual" }); }}><th scope="row"><button type="button" disabled={row === null} aria-label={isPremarket ? "Use Lighter premarket valuation" : `Select ${label} FDV`} aria-pressed={active}><i aria-hidden="true" /><span>{label}{isPremarket && <small>LIGHTER PREMARKET</small>}</span></button></th><td>{money(isPremarket ? premarket?.price : validSupply && row !== null ? row / supply : undefined, true)}</td><td>{cell && points !== null && !pointsError && validSupply ? number.format(supply * VARIATIONAL_ALLOCATION / 100 * (points / total!)) : "—"}</td><td>{points !== null && !pointsError ? money(cell?.value) : "—"}</td></tr>;
             })}</tbody></table></div>
-            <div className="va-matrix-footer"><span><i />{validFdv ? `${fdvLabel(fdv)} FDV selected` : "Choose an FDV"}</span><span>{premarketSelected ? "Lighter premarket scenario" : selectedProbability !== null && selectedProbability !== undefined ? `${percent.format(selectedProbability)} chance of exceeding` : "Manual valuation scenario"}</span></div><p className="va-table-note va-premarket-source"><a href={VARIATIONAL_PREMARKET_URL} target="_blank" rel="noopener noreferrer">Lighter VARIATIONAL ↗</a><span role="status">{premarket ? `Mark price ${money(premarket.price, true)} · retrieved ${date.format(new Date(premarket.fetchedAt))} UTC · refreshes every minute` : premarketLoading ? "Loading premarket quote…" : "Premarket quote unavailable · manual FDV scenarios remain available"}</span></p><p className="va-table-note">* Premarket FDV = Lighter mark price × your illustrative supply. Other token prices use FDV ÷ supply. This is a prelaunch perpetual quote. Odds show the chance of exceeding each fixed FDV one day after launch.</p>
-          </section>
-
-          <section className="va-panel va-market" aria-labelledby="va-market-heading" aria-busy={loading}><div className="va-panel-heading va-market-heading"><div className="va-market-brand"><img src="/brand/extended/polymarket.png" width="32" height="32" alt="" /><div><p className="va-eyebrow">03 / MARKET REFERENCE</p><h2 id="va-market-heading">Polymarket</h2></div></div><span className="va-connection" role="status"><i />{marketStatus}</span></div>
-            <a className="va-market-event" href={VARIATIONAL_EVENT.url} target="_blank" rel="noopener noreferrer">{VARIATIONAL_EVENT.title} <span>↗</span></a>
-            {marketEstimate && <div className="va-market-estimate"><div><span>Market-implied median FDV</span><strong>≈ {fdvLabel(marketEstimate.fdvUsd)}</strong><p>50% crossing{marketEstimate.lowerUsd !== marketEstimate.upperUsd ? ` between ${fdvLabel(marketEstimate.lowerUsd)} and ${fdvLabel(marketEstimate.upperUsd)}` : " at this threshold"}</p></div><button className="va-apply" type="button" onClick={() => update({ fdvInput: String(Math.round(marketEstimate.fdvUsd)) })} disabled={loading || fdv === Math.round(marketEstimate.fdvUsd)}>{fdv === Math.round(marketEstimate.fdvUsd) ? "Applied ✓" : "Use this FDV ↗"}</button></div>}
-            {median && (median.kind === "above" || median.kind === "below") && <p className="va-market-note">Market-implied median: {median.kind === "above" ? "above" : "below"} {fdvLabel(median.boundUsd)}. The quoted thresholds do not bracket 50%.</p>}
-            {median?.kind === "unavailable" && !snapshot?.message && <p className="va-market-note">{median.reason}</p>}
-            {(marketError || snapshot?.message) && <p className="va-market-note" role="status">{marketError || snapshot?.message}</p>}
-            <div className="va-market-update"><span>{snapshot?.fetchedAt ? `Retrieved ${date.format(new Date(snapshot.fetchedAt))} UTC` : "Retrieving latest available quotes"}</span><button type="button" onClick={() => void load()} disabled={loading}>{loading ? "Loading…" : "Refresh ↻"}</button></div>
-            <details className="va-market-method"><summary>Market data and calculation</summary><p>Each percentage is a separate, overlapping probability of exceeding a threshold. Probabilities are not added or averaged. The median interpolates the 50% crossing; it is not an expected FDV or a token price.</p><p>Odds use the latest available hourly YES bid/ask midpoint, or the latest recorded trade. Hover over an odds cell to see its quote time. Quotes over 24 hours old remain visible but are excluded from the median. Requests are cached for one minute. Refreshing quotes does not change your selected FDV.</p>{snapshot?.warnings.map(warning => <p key={warning}>{warning}</p>)}</details>
+            <div className="va-matrix-footer"><span><i />{validFdv ? `${fdvLabel(fdv)} FDV selected` : "Choose an FDV"}</span><span>{premarketSelected ? "Lighter premarket scenario" : "Manual valuation scenario"}</span></div><p className="va-table-note va-premarket-source"><a href={VARIATIONAL_PREMARKET_URL} target="_blank" rel="noopener noreferrer">Lighter VARIATIONAL ↗</a><span role="status">{premarket ? `Mark price ${money(premarket.price, true)} · retrieved ${date.format(new Date(premarket.fetchedAt))} UTC · refreshes every minute` : premarketLoading ? "Loading premarket quote…" : "Premarket quote unavailable · manual FDV scenarios remain available"}</span></p><p className="va-table-note">* Premarket FDV = Lighter mark price × your illustrative supply. Other token prices use FDV ÷ supply. This is a prelaunch perpetual quote.</p>
           </section>
         </div>
       </div>
 
-      <section className="va-method" aria-labelledby="va-method-heading"><div><p className="va-eyebrow">04 / METHODOLOGY</p><h2 id="va-method-heading">Calculation method</h2></div><div><p className="va-formula">Value = FDV × 32% × (your points ÷ total points)</p><p>The 32% Genesis allocation is described in the <a href={VARIATIONAL_TOKEN_SOURCE} target="_blank" rel="noopener noreferrer">Variational token documentation ↗</a>. The starting points pool is 10,350,000; the 1B illustrative token supply is an assumption. The final eligible points pool, FDV and token supply may differ. Fixed-FDV dollar estimates are independent of supply. The Lighter scenario derives FDV from mark price × supply, so its dollar estimate changes with supply. Selecting that row follows refreshed prices; editing FDV or selecting a fixed row uses a manual valuation.</p></div></section>
+      <section className="va-method" aria-labelledby="va-method-heading"><div><p className="va-eyebrow">03 / METHODOLOGY</p><h2 id="va-method-heading">Calculation method</h2></div><div><p className="va-formula">Value = FDV × 32% × (your points ÷ total points)</p><p>The 32% Genesis allocation is described in the <a href={VARIATIONAL_TOKEN_SOURCE} target="_blank" rel="noopener noreferrer">Variational token documentation ↗</a>. The starting points pool is 10,350,000; the 1B illustrative token supply is an assumption. The final eligible points pool, FDV and token supply may differ. Fixed-FDV dollar estimates are independent of supply. The Lighter scenario derives FDV from mark price × supply, so its dollar estimate changes with supply. Selecting that row follows refreshed prices; editing FDV or selecting a fixed row uses a manual valuation.</p></div></section>
     </main>
     <footer className="va-footer"><span>VARIATIONAL / UNOFFICIAL COMMUNITY TOOL</span><span>Scenario estimates · No wallet connection</span></footer>
   </div></div>;

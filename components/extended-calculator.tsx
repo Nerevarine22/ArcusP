@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import NumberTransition from "@/components/number-transition";
-import ExtendedMarketCard from "@/components/extended-market-card";
 import ReferralOffer from "@/components/referral-offer";
 import { useExtendedEstimate } from "@/hooks/use-extended-estimate";
 import { parsePoints } from "@/lib/estimator";
@@ -99,8 +98,6 @@ export default function ExtendedCalculator() {
               <a href={EXTENDED_PREMARKET_URL} target="_blank" rel="noopener noreferrer">Hyperliquid mark price <span aria-hidden="true">↗</span></a>
             </div>
           </section>
-
-          <ExtendedMarketCard currentFdv={fdv} onApply={value => update({ fdvInput: String(value) })} />
 
           <section className="ex-tokenomics ex-panel" aria-labelledby="ex-tokenomics-heading"><div className="ex-tokenomics-heading"><p className="ex-eyebrow">03 / THE TOKEN MODEL</p><h2 id="ex-tokenomics-heading">Token supply and allocation</h2></div><dl><div><dt>Genesis supply</dt><dd>{number.format(EXTENDED_SUPPLY)} <span>XTEN</span></dd></div><div><dt>Community allocation</dt><dd>{number.format(EXTENDED_COMMUNITY_TOKENS)} <span>XTEN · {EXTENDED_ALLOCATION}%</span></dd></div><div><dt>Total Xpoints</dt><dd>{number.format(EXTENDED_TOTAL_POINTS)} <span>final programme total</span></dd></div></dl></section>
         </div>

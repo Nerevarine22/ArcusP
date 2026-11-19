@@ -4,7 +4,7 @@ import "./variational.css";
 
 export const metadata: Metadata = {
   title: "Variational · Points Calculator",
-  description: "Estimate Variational point value using Lighter premarket prices, FDV scenarios, a manual points pool, and Polymarket probabilities.",
+  description: "Estimate Variational point value using Lighter premarket prices, FDV scenarios, and a manual points pool.",
   icons: { icon: "/brand/variational/symbol.svg" },
 };
 

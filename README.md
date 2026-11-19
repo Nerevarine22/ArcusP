@@ -119,38 +119,11 @@ Inputs are manual Xpoints and FDV (starting scenario **$500M**). Extended's
 The XTEN estimate updates as Xpoints are entered. The summary and FDV table
 value that quantity at **FDV ÷ 1B XTEN**. Settings persist separately under
 `extended-estimate-v1`, preserving Arcus and TxFlow settings.
-The table appears above Polymarket and uses its thresholds through $1B:
+The fixed scenarios run through $1B:
 **$150M, $250M, $300M, $500M, $800M, $1B**. The FDV preset buttons use the same values.
 The Hyperliquid row refreshes every minute using the XTEN perpetual mark price
 from its public API. Its implied FDV uses the same **1B XTEN** supply. Selecting
 the row applies the quoted FDV at that time. Manual values remain editable.
-
-Polymarket FDV is loaded through the server-only Heisenberg integration at
-`GET /api/extended/fdv`. Put `HEISENBERG_API_KEY` in the ignored `.env.local`
-file (see `.env.example`) and restart the server. Configure the same private
-variable in the production host before deploying. No key is sent to the browser.
-
-The fixed event is https://polymarket.com/event/extended-fdv-above-one-day-after-launch.
-Agent 574 retrieves its open thresholds; agent 568 retrieves bounded seven-day
-hourly candles for each YES token. The newest valid candle uses the bid/ask
-midpoint when the spread is at most 10 percentage points, otherwise its recorded
-trade close. Quotes over 24 hours old retain their last known percentage in the table and
-are excluded from the FDV estimate; quote times remain in tooltips and notices. Each row
-links to its contract. Partial data is labeled and missing values are never zero.
-
-A suggested FDV linearly interpolates the 50% crossing of the exceedance curve.
-This is a model-derived median, not a weighted average of overlapping contracts,
-a listed token price, or an expected FDV. Missing tail quotes do not block an
-available crossing; nonmonotone quotes disable the estimate. If all probabilities
-are on one side of 50%, only an upper/lower bound is displayed. The user applies
-the numeric estimate explicitly; refresh does not overwrite manual calculations.
-
-Responses are cached server-side for 60 seconds with concurrent requests shared
-per instance. A normal fresh event load makes eight Heisenberg requests for its
-seven thresholds; market pagination is bounded. Hourly quote times, partial data,
-notices and the calculation method are shown in the UI. There is no automatic
-polling. Errors retain the manual calculator and never expose provider response
-bodies, credentials or stack traces.
 
 A Next.js App Router and TypeScript app with Arcus, TxFlow and Extended tools
 and an enabled multi-exchange project chooser. Add future projects through `lib/projects.ts`.

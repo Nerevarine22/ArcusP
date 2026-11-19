@@ -159,11 +159,11 @@ When multi-exchange mode is enabled, both Arcus tools have an `All projects` lin
 Existing stored names, wallet addresses and estimator settings are preserved.
 
 Arcus nickname searches read the local
-`leaderboard-season-1-2026-11-12.json` through `GET /api/points?name=Witty%20Phoenix`.
+`leaderboard-season-1-2026-11-19.json` through `GET /api/points?name=Witty%20Phoenix`.
 The full snapshot stays on the server; only the matching entry is sent to the browser.
-The previous `leaderboard-season-1-2026-11-05.json` is used for weekly comparisons.
+The previous `leaderboard-season-1-2026-11-12.json` is used for weekly comparisons.
 All earlier snapshots are retained as archives and contribute to weekly analytics.
-The 12 November download records Week 6, distributed on 11 November at 20:00 UTC.
+The 19 November download records Week 7, distributed on 18 November at 20:00 UTC.
 
 ## Local development
 
@@ -391,7 +391,7 @@ values and label that week explicitly; switching week cards lets users compare t
 On mobile, the primary comparison uses cards; the optional compact table has a
 sticky week column and its own horizontal scroll container.
 
-`GET /api/points?name=...&history=1` adds the three saved distribution records as
+`GET /api/points?name=...&history=1` adds the saved distribution records as
 `weekly_points`. Rewards are consecutive cumulative snapshot differences, not
 trade-level attribution. Missing history stays unknown, negative changes are
 adjustments, and ongoing weeks remain pending. Weekly efficiency requires
@@ -417,7 +417,7 @@ closes, flips, weekly cutoffs, DST, missing history, and exact volume allocation
 ## Refreshing the snapshot
 
 ```powershell
-.\fetch-leaderboard.ps1 -OutputPath .\leaderboard-season-1-2026-11-12.json
+.\fetch-leaderboard.ps1 -OutputPath .\leaderboard-season-1-2026-11-19.json
 ```
 
 The JSON is read on each request. Reload the page after updating the snapshot

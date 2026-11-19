@@ -123,7 +123,7 @@ test('nonadjacent wallets on a shared project use a common threshold without cou
 
 test('Variational rewards use the calculator assumptions and contribute alongside other project points',()=>{
   const defaults=pairRewardDefaults('variational');
-  assert.equal(defaults.pool,'10000000');
+  assert.equal(defaults.pool,'10350000');
   assert.equal(defaults.allocation,'32');
   const ids=['arcus','txflow','risex','entropy','variational'];
   const reward={...a,allocation:'32'};

@@ -24,7 +24,7 @@ function subscribe(onChange: () => void) {
   };
 }
 function updateSettings(patch: Partial<VariationalSettings>) {
-  remembered = JSON.stringify({ ...parseVariationalSettings(getSnapshot()), ...patch });
+  remembered = JSON.stringify({ ...parseVariationalSettings(getSnapshot()), ...patch, poolRevision: 2 });
   try { localStorage.setItem(storageKey, remembered); } catch { /* Retain the current tab's settings. */ }
   window.dispatchEvent(new Event(changeEvent));
 }

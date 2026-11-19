@@ -9,8 +9,8 @@ perpetual market and unscaled contract before returning a quote. Missing or
 failed quotes remain unavailable; they never become zero or an index-price fallback.
 
 Premarket FDV = mark price × the editable illustrative token supply. Point value
-then uses FDV × 32% × user points / total points. The starting 1B supply and 10M
-points pool remain assumptions. Changing supply changes a price-derived FDV and
+then uses FDV × 32% × user points / total points. The starting pool is 10,350,000
+points, and the 1B supply remains an assumption. Changing supply changes a price-derived FDV and
 USD valuation; fixed-FDV scenarios remain independent of supply. A new visitor
 starts in premarket mode, and selecting that row follows refreshed prices.
 Editing FDV or choosing a fixed row switches to manual mode. Previously saved
@@ -36,7 +36,7 @@ Enter equity in USD including open-position PnL. No trade API is called for this
 project. Its balance contributes to the combined equity calculation, while trade
 PnL, fees and funding remain unknown. Loaded volume and execution costs cover
 API-supported accounts only. Variational point scenarios start with the existing
-calculator's editable 10M pool and 32% allocation. The history-based PnL mode is
+calculator's editable 10,350,000 pool and 32% allocation. The history-based PnL mode is
 unavailable when a manual-equity project is selected.
 
 The comparison requests available history independently of point distributions.

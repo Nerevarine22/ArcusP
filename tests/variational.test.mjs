@@ -34,6 +34,10 @@ test('Variational settings preserve independent pool, supply, empty and custom v
   const {valuationMode,...legacy}=settings;
   assert.deepEqual(parseVariationalSettings(JSON.stringify(legacy)),settings,'existing manual calculations stay manual');
   assert.equal(VARIATIONAL_DEFAULTS.valuationMode,'premarket');
+  assert.equal(VARIATIONAL_DEFAULTS.totalInput,'10350000');
+  assert.equal(parseVariationalSettings(JSON.stringify({...settings,totalInput:'10000000'})).totalInput,'10350000');
+  assert.equal(parseVariationalSettings(JSON.stringify({...settings,totalInput:'10000000',poolRevision:2})).totalInput,'10000000');
+  assert.equal(parseVariationalSettings(JSON.stringify({...settings,totalInput:''})).totalInput,'');
   for (const value of [null,'{','[]','null']) assert.deepEqual(parseVariationalSettings(value),VARIATIONAL_DEFAULTS);
 });
 

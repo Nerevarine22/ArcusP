@@ -26,10 +26,14 @@ test('Variational scenarios use 32%; changing illustrative supply changes tokens
 });
 
 test('Variational settings preserve independent pool, supply, empty and custom values; malformed storage restores defaults', () => {
-  const settings={pointsInput:'125.5',totalInput:'9800000',fdvInput:'740000000',supplyInput:'2000000000'};
+  const settings={pointsInput:'125.5',totalInput:'9800000',fdvInput:'740000000',supplyInput:'2000000000',valuationMode:'manual'};
   assert.deepEqual(parseVariationalSettings(JSON.stringify(settings)),settings);
   assert.equal(parseVariationalSettings('{"supplyInput":""}').supplyInput,'');
   assert.equal(parseVariationalSettings('{"pointsInput":0}').pointsInput,'');
+  assert.equal(parseVariationalSettings(JSON.stringify({...settings,valuationMode:'premarket'})).valuationMode,'premarket');
+  const {valuationMode,...legacy}=settings;
+  assert.deepEqual(parseVariationalSettings(JSON.stringify(legacy)),settings,'existing manual calculations stay manual');
+  assert.equal(VARIATIONAL_DEFAULTS.valuationMode,'premarket');
   for (const value of [null,'{','[]','null']) assert.deepEqual(parseVariationalSettings(value),VARIATIONAL_DEFAULTS);
 });
 

@@ -5,10 +5,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import NumberTransition from "@/components/number-transition";
 import ReferralOffer from "@/components/referral-offer";
 import { useVariationalEstimate } from "@/hooks/use-variational-estimate";
+import { useVariationalPremarket } from "@/hooks/use-variational-premarket";
 import { estimate, parsePoints } from "@/lib/estimator";
 import { featureFlags } from "@/lib/features";
 import { VARIATIONAL_ALLOCATION, VARIATIONAL_FDV_PRESETS, VARIATIONAL_TOKEN_SOURCE } from "@/lib/variational-estimator";
 import { VARIATIONAL_EVENT, type VariationalMarketSnapshot } from "@/lib/variational-market";
+import { VARIATIONAL_PREMARKET_URL, variationalPremarketFdv } from "@/lib/variational-premarket";
 
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const precise = new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 });
@@ -21,15 +23,21 @@ const money = (value: number | undefined, unit = false) => value === undefined ?
 
 export default function VariationalCalculator() {
   const [settings, update] = useVariationalEstimate();
-  const { pointsInput, totalInput, fdvInput, supplyInput } = settings;
-  const points = parsePoints(pointsInput), total = parsePoints(totalInput), fdv = parsePoints(fdvInput), supply = parsePoints(supplyInput);
+  const { quote: premarket, loading: premarketLoading } = useVariationalPremarket();
+  const { pointsInput, totalInput, fdvInput, supplyInput, valuationMode } = settings;
+  const points = parsePoints(pointsInput), total = parsePoints(totalInput), supply = parsePoints(supplyInput);
+  const premarketFdv = variationalPremarketFdv(premarket?.price ?? null, supply);
+  const premarketSelected = valuationMode === "premarket";
+  const fdv = premarketSelected ? premarketFdv : parsePoints(fdvInput);
   const validTotal = total !== null && total > 0, validFdv = fdv !== null && fdv > 0, validSupply = supply !== null && supply > 0;
   const pointsError = pointsInput.trim() && points === null ? "Enter points as a number, zero or greater."
     : points !== null && validTotal && points > total ? "Your points cannot exceed the total points pool." : "";
   const totalError = validTotal ? "" : "Enter a total points pool greater than zero.";
-  const fdvError = validFdv ? "" : "Enter an FDV greater than zero.";
+  const fdvError = validFdv ? "" : premarketSelected
+    ? premarketLoading ? "" : "Lighter valuation unavailable. Check token supply or select a manual FDV."
+    : "Enter an FDV greater than zero.";
   const supplyError = validSupply ? "" : "Enter a token supply greater than zero.";
-  // USD estimates depend on FDV and allocation, not on an assumed token supply.
+  // Fixed-FDV scenarios are supply independent; price-derived FDV uses assumed supply.
   const result = validFdv && validTotal && points !== null ? estimate(fdv, VARIATIONAL_ALLOCATION, total, points) : null;
   const unit = validFdv && validTotal ? estimate(fdv, VARIATIONAL_ALLOCATION, total, 0) : null;
   const tokens = result && validSupply ? supply * VARIATIONAL_ALLOCATION / 100 * (points! / total!) : undefined;
@@ -55,6 +63,8 @@ export default function VariationalCalculator() {
   const marketStatus = loading ? "Loading" : snapshot?.status === "ready" ? "Connected" : snapshot?.status === "partial" ? "Partial data" : "Unavailable";
   const selectedThreshold = snapshot?.thresholds.find(row => row.thresholdUsd === fdv);
   const selectedProbability = selectedThreshold?.yesProbability ?? selectedThreshold?.lastKnownProbability;
+  const rows = [{ id: "premarket", value: premarketFdv, premarket: true },
+    ...VARIATIONAL_FDV_PRESETS.map(value => ({ id: String(value), value, premarket: false }))];
 
   return <div className="va-page"><div className="va-shell">
     <header className="va-header">
@@ -67,30 +77,32 @@ export default function VariationalCalculator() {
 
       <section className="va-summary" aria-labelledby="va-value-heading">
         <div className="va-summary-main"><p className="va-eyebrow">ALLOCATION ESTIMATE <span className="va-usd-tag">USD</span></p><h2 id="va-value-heading">Estimated value of your points</h2><strong className="va-value"><NumberTransition value={money(result?.value)} animate /></strong><p>{validFdv ? `${fdvLabel(fdv)} FDV` : "Set an FDV"}<span> / </span>{VARIATIONAL_ALLOCATION}% allocation<span> / </span>{validTotal ? `${number.format(total)} total points` : "Set a points pool"}</p></div>
-        <div className="va-summary-details"><div className="va-points-total"><span>Your points</span><strong>{points !== null && !pointsError ? number.format(points) : "—"}<small>PTS</small></strong></div><dl><div><dt>Value per point</dt><dd>{money(unit?.valuePerPoint, true)}</dd></div><div><dt>Your points pool share</dt><dd>{result ? `${precise.format(result.poolShare)}%` : "—"}</dd></div><div><dt>Illustrative VAR allocation</dt><dd>{tokens === undefined ? "—" : number.format(tokens)}</dd></div><div><dt>Illustrative VAR price</dt><dd>{money(validFdv && validSupply ? fdv / supply : undefined, true)}</dd></div></dl></div>
-        <div className="va-summary-footer"><span><i />Proportional allocation model</span><span>FDV, total points and token supply are scenario inputs.</span></div>
+        <div className="va-summary-details"><div className="va-points-total"><span>Your points</span><strong>{points !== null && !pointsError ? number.format(points) : "—"}<small>PTS</small></strong></div><dl><div><dt>Value per point</dt><dd>{money(unit?.valuePerPoint, true)}</dd></div><div><dt>Your points pool share</dt><dd>{result ? `${precise.format(result.poolShare)}%` : "—"}</dd></div><div><dt>Illustrative VAR allocation</dt><dd>{tokens === undefined ? "—" : number.format(tokens)}</dd></div><div><dt>{premarketSelected ? "Lighter mark price" : "Illustrative VAR price"}</dt><dd>{money(premarketSelected ? premarket?.price : validFdv && validSupply ? fdv / supply : undefined, true)}</dd></div></dl></div>
+        <div className="va-summary-footer"><span><i />{premarketSelected ? "Lighter premarket scenario" : "Proportional allocation model"}</span><span>{premarketSelected ? "FDV uses the mark price × your assumed token supply." : "FDV, total points and token supply are scenario inputs."}</span></div>
       </section>
 
       <div className="va-workspace">
         <section className="va-panel va-settings" aria-labelledby="va-settings-heading"><div className="va-panel-heading"><p className="va-eyebrow">01 / INPUTS</p><h2 id="va-settings-heading">Calculation settings</h2></div>
           <div className="va-field"><label htmlFor="va-points">Your points<span>PTS</span></label><input id="va-points" className="va-points-input" value={pointsInput} onChange={e => update({ pointsInput: e.target.value })} inputMode="decimal" maxLength={100} autoComplete="off" aria-invalid={Boolean(pointsError)} aria-describedby={pointsError ? "va-points-error" : undefined} />{pointsError && <p id="va-points-error" className="va-error" role="alert">{pointsError}</p>}</div>
           <div className="va-field"><label htmlFor="va-total">Total points pool<span>MANUAL</span></label><input id="va-total" value={totalInput} onChange={e => update({ totalInput: e.target.value })} inputMode="decimal" maxLength={100} autoComplete="off" aria-invalid={Boolean(totalError)} aria-describedby="va-total-help" /><p id="va-total-help" className={totalError ? "va-error" : "va-help"}>{totalError || "10M is a starting assumption. Enter the points pool you want to model."}</p></div>
-          <div className="va-field"><label htmlFor="va-fdv">Token FDV<span>USD</span></label><div className="va-currency-input"><span>$</span><input id="va-fdv" value={fdvInput} onChange={e => update({ fdvInput: e.target.value })} inputMode="decimal" maxLength={100} autoComplete="off" aria-invalid={Boolean(fdvError)} aria-describedby="va-fdv-help" /></div><p id="va-fdv-help" className={fdvError ? "va-error" : "va-help"}>{fdvError || "Enter an FDV or select a row in the table."}</p></div>
+          <div className="va-field"><label htmlFor="va-fdv">Token FDV<span>{premarketSelected ? "LIGHTER × SUPPLY" : "USD"}</span></label><div className="va-currency-input"><span>$</span><input id="va-fdv" value={premarketSelected ? premarketFdv === null ? "" : String(premarketFdv) : fdvInput} onChange={e => update({ fdvInput: e.target.value, valuationMode: "manual" })} inputMode="decimal" maxLength={100} autoComplete="off" aria-invalid={Boolean(fdvError)} aria-describedby="va-fdv-help" /></div><p id="va-fdv-help" className={fdvError ? "va-error" : "va-help"}>{fdvError || (premarketSelected ? premarketLoading ? "Loading Lighter mark price…" : "Follows the Lighter mark price. Edit this value to use a manual FDV." : "Enter an FDV or select a row in the table.")}</p></div>
           <div className="va-allocation"><div><span>Genesis allocation</span><strong>32%</strong></div><div className="va-allocation-track"><span /></div><p>Proportional to points holdings. <a href={VARIATIONAL_TOKEN_SOURCE} target="_blank" rel="noopener noreferrer">Official documentation ↗</a></p></div>
-          <div className="va-field"><label htmlFor="va-supply">Illustrative token supply<span>VAR</span></label><input id="va-supply" value={supplyInput} onChange={e => update({ supplyInput: e.target.value })} inputMode="decimal" maxLength={100} autoComplete="off" aria-invalid={Boolean(supplyError)} aria-describedby="va-supply-help" /><p id="va-supply-help" className={supplyError ? "va-error" : "va-help"}>{supplyError || "1B matches the reference grid. Total supply is not specified in the linked token documentation. This changes token counts and price, not USD value."}</p></div>
+          <div className="va-field"><label htmlFor="va-supply">Illustrative token supply<span>VAR</span></label><input id="va-supply" value={supplyInput} onChange={e => update({ supplyInput: e.target.value })} inputMode="decimal" maxLength={100} autoComplete="off" aria-invalid={Boolean(supplyError)} aria-describedby="va-supply-help" /><p id="va-supply-help" className={supplyError ? "va-error" : "va-help"}>{supplyError || "1B is an assumption. Total supply is not specified in the linked token documentation. Supply changes the premarket FDV and USD estimate; fixed-FDV estimates stay the same."}</p></div>
           <p className="va-saved"><span aria-hidden="true">✓</span> Your calculation is saved in this browser.</p>
         </section>
 
         <div className="va-analysis">
           <section className="va-panel va-matrix" aria-labelledby="va-matrix-heading"><div className="va-panel-heading va-matrix-heading"><div><p className="va-eyebrow">02 / SCENARIOS</p><h2 id="va-matrix-heading">Value estimates by FDV</h2></div><span className="va-grid-label">SELECT A ROW</span></div>
             <p className="va-table-help">{validTotal ? `${number.format(total)} total points` : "Set a total points pool"} · 32% Genesis allocation</p>
-            <div className="va-table-wrap" data-lenis-prevent-horizontal><table className="va-table"><caption className="sr-only">Variational FDV scenarios, Polymarket probabilities, illustrative VAR price and allocation, and estimated USD value.</caption><thead><tr><th scope="col">FDV</th><th scope="col"><span className="va-odds-label">Odds <img src="/brand/extended/polymarket.png" alt="Polymarket" width="13" height="13" /></span></th><th scope="col">VAR price*</th><th scope="col">VAR allocation*</th><th scope="col">Your value</th></tr></thead><tbody>{VARIATIONAL_FDV_PRESETS.map(row => {
-              const cell = validTotal ? estimate(row, VARIATIONAL_ALLOCATION, total, points !== null && !pointsError ? points : 0) : null;
-              const active = fdv === row, threshold = snapshot?.thresholds.find(item => item.thresholdUsd === row);
+            <div className="va-table-wrap" data-lenis-prevent-horizontal><table className="va-table"><caption className="sr-only">Lighter premarket valuation followed by fixed Variational FDV scenarios, Polymarket probabilities, VAR price and illustrative allocation, and estimated USD value.</caption><thead><tr><th scope="col">FDV</th><th scope="col"><span className="va-odds-label">Odds <img src="/brand/extended/polymarket.png" alt="Polymarket" width="13" height="13" /></span></th><th scope="col">VAR price*</th><th scope="col">VAR allocation*</th><th scope="col">Your value</th></tr></thead><tbody>{rows.map(({ id, value: row, premarket: isPremarket }) => {
+              const cell = validTotal && row !== null ? estimate(row, VARIATIONAL_ALLOCATION, total, points !== null && !pointsError ? points : 0) : null;
+              const active = isPremarket ? premarketSelected : !premarketSelected && fdv === row;
+              const threshold = isPremarket ? undefined : snapshot?.thresholds.find(item => item.thresholdUsd === row);
               const probability = threshold?.yesProbability ?? threshold?.lastKnownProbability;
-              return <tr key={row} className={active ? "va-selected-row" : undefined} onClick={() => update({ fdvInput: String(row) })}><th scope="row"><button type="button" aria-label={`Select ${fdvLabel(row)} FDV`} aria-pressed={active}><i aria-hidden="true" />{fdvLabel(row)}</button></th><td title={threshold?.quoteAsOf ? `Quote: ${date.format(new Date(threshold.quoteAsOf))} UTC` : undefined}>{probability !== null && probability !== undefined ? percent.format(probability) : "—"}</td><td>{money(validSupply ? row / supply : undefined, true)}</td><td>{cell && points !== null && !pointsError && validSupply ? number.format(supply * VARIATIONAL_ALLOCATION / 100 * (points / total!)) : "—"}</td><td>{points !== null && !pointsError ? money(cell?.value) : "—"}</td></tr>;
+              const label = row !== null ? fdvLabel(row) : premarketLoading ? "Loading…" : premarket ? "Set supply" : "Unavailable";
+              return <tr key={id} className={`${isPremarket ? "va-premarket-row " : ""}${active ? "va-selected-row" : ""}`} onClick={() => { if (row !== null) update(isPremarket ? { valuationMode: "premarket" } : { fdvInput: String(row), valuationMode: "manual" }); }}><th scope="row"><button type="button" disabled={row === null} aria-label={isPremarket ? "Use Lighter premarket valuation" : `Select ${label} FDV`} aria-pressed={active}><i aria-hidden="true" /><span>{label}{isPremarket && <small>LIGHTER PREMARKET</small>}</span></button></th><td title={threshold?.quoteAsOf ? `Quote: ${date.format(new Date(threshold.quoteAsOf))} UTC` : undefined}>{probability !== null && probability !== undefined ? percent.format(probability) : "—"}</td><td>{money(isPremarket ? premarket?.price : validSupply && row !== null ? row / supply : undefined, true)}</td><td>{cell && points !== null && !pointsError && validSupply ? number.format(supply * VARIATIONAL_ALLOCATION / 100 * (points / total!)) : "—"}</td><td>{points !== null && !pointsError ? money(cell?.value) : "—"}</td></tr>;
             })}</tbody></table></div>
-            <div className="va-matrix-footer"><span><i />{validFdv ? `${fdvLabel(fdv)} FDV selected` : "Choose an FDV"}</span><span>{selectedProbability !== null && selectedProbability !== undefined ? `${percent.format(selectedProbability)} chance of exceeding` : "Manual valuation scenario"}</span></div><p className="va-table-note">* Token price and allocation use your illustrative supply. Odds show the chance of exceeding each FDV one day after launch.</p>
+            <div className="va-matrix-footer"><span><i />{validFdv ? `${fdvLabel(fdv)} FDV selected` : "Choose an FDV"}</span><span>{premarketSelected ? "Lighter premarket scenario" : selectedProbability !== null && selectedProbability !== undefined ? `${percent.format(selectedProbability)} chance of exceeding` : "Manual valuation scenario"}</span></div><p className="va-table-note va-premarket-source"><a href={VARIATIONAL_PREMARKET_URL} target="_blank" rel="noopener noreferrer">Lighter VARIATIONAL ↗</a><span role="status">{premarket ? `Mark price ${money(premarket.price, true)} · retrieved ${date.format(new Date(premarket.fetchedAt))} UTC · refreshes every minute` : premarketLoading ? "Loading premarket quote…" : "Premarket quote unavailable · manual FDV scenarios remain available"}</span></p><p className="va-table-note">* Premarket FDV = Lighter mark price × your illustrative supply. Other token prices use FDV ÷ supply. This is a prelaunch perpetual quote. Odds show the chance of exceeding each fixed FDV one day after launch.</p>
           </section>
 
           <section className="va-panel va-market" aria-labelledby="va-market-heading" aria-busy={loading}><div className="va-panel-heading va-market-heading"><div className="va-market-brand"><img src="/brand/extended/polymarket.png" width="32" height="32" alt="" /><div><p className="va-eyebrow">03 / MARKET REFERENCE</p><h2 id="va-market-heading">Polymarket</h2></div></div><span className="va-connection" role="status"><i />{marketStatus}</span></div>
@@ -105,7 +117,7 @@ export default function VariationalCalculator() {
         </div>
       </div>
 
-      <section className="va-method" aria-labelledby="va-method-heading"><div><p className="va-eyebrow">04 / METHODOLOGY</p><h2 id="va-method-heading">Calculation method</h2></div><div><p className="va-formula">Value = FDV × 32% × (your points ÷ total points)</p><p>The 32% Genesis allocation is described in the <a href={VARIATIONAL_TOKEN_SOURCE} target="_blank" rel="noopener noreferrer">Variational token documentation ↗</a>. The 10M starting points pool and 1B illustrative supply are assumptions. The final eligible points pool, FDV and token supply may differ. Dollar estimates do not depend on the assumed token supply.</p></div></section>
+      <section className="va-method" aria-labelledby="va-method-heading"><div><p className="va-eyebrow">04 / METHODOLOGY</p><h2 id="va-method-heading">Calculation method</h2></div><div><p className="va-formula">Value = FDV × 32% × (your points ÷ total points)</p><p>The 32% Genesis allocation is described in the <a href={VARIATIONAL_TOKEN_SOURCE} target="_blank" rel="noopener noreferrer">Variational token documentation ↗</a>. The 10M starting points pool and 1B illustrative supply are assumptions. The final eligible points pool, FDV and token supply may differ. Fixed-FDV dollar estimates are independent of supply. The Lighter scenario derives FDV from mark price × supply, so its dollar estimate changes with supply. Selecting that row follows refreshed prices; editing FDV or selecting a fixed row uses a manual valuation.</p></div></section>
     </main>
     <footer className="va-footer"><span>VARIATIONAL / UNOFFICIAL COMMUNITY TOOL</span><span>Scenario estimates · No wallet connection</span></footer>
   </div></div>;

@@ -1,5 +1,25 @@
 # Perp tools
 
+## Variational premarket valuation
+
+The first FDV scenario on `/variational` uses the public Lighter VARIATIONAL
+market's mark price, refreshed every minute while the page is visible. The
+server queries `orderBookDetails?market_id=4098` and validates the exact active
+perpetual market and unscaled contract before returning a quote. Missing or
+failed quotes remain unavailable; they never become zero or an index-price fallback.
+
+Premarket FDV = mark price × the editable illustrative token supply. Point value
+then uses FDV × 32% × user points / total points. The starting 1B supply and 10M
+points pool remain assumptions. Changing supply changes a price-derived FDV and
+USD valuation; fixed-FDV scenarios remain independent of supply. A new visitor
+starts in premarket mode, and selecting that row follows refreshed prices.
+Editing FDV or choosing a fixed row switches to manual mode. Previously saved
+manual calculations retain their values and mode.
+
+Sources: [Lighter prelaunch pricing](https://docs.lighter.xyz/trading/prelaunch-markets),
+[Lighter public SDK schema](https://github.com/elliottech/lighter-python/blob/main/docs/PerpsOrderBookDetail.md),
+[Variational allocation](https://docs.variational.io/token/usdvar).
+
 ## Multi-project wallet comparison
 
 Open `/compare` directly; this page is not linked from the home page. Select two to five

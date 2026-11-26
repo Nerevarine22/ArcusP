@@ -152,11 +152,11 @@ When multi-exchange mode is enabled, both Arcus tools have an `All projects` lin
 Existing stored names, wallet addresses and estimator settings are preserved.
 
 Arcus nickname searches read the local
-`leaderboard-season-1-2026-11-19.json` through `GET /api/points?name=Witty%20Phoenix`.
+`leaderboard-season-1-2026-11-26.json` through `GET /api/points?name=Witty%20Phoenix`.
 The full snapshot stays on the server; only the matching entry is sent to the browser.
-The previous `leaderboard-season-1-2026-11-12.json` is used for weekly comparisons.
+The previous `leaderboard-season-1-2026-11-19.json` is used for weekly comparisons.
 All earlier snapshots are retained as archives and contribute to weekly analytics.
-The 19 November download records Week 7, distributed on 18 November at 20:00 UTC.
+The 26 November download records Week 8, distributed on 25 November at 20:00 UTC.
 
 ## Local development
 
@@ -410,7 +410,7 @@ closes, flips, weekly cutoffs, DST, missing history, and exact volume allocation
 ## Refreshing the snapshot
 
 ```powershell
-.\fetch-leaderboard.ps1 -OutputPath .\leaderboard-season-1-2026-11-19.json
+.\fetch-leaderboard.ps1 -OutputPath .\leaderboard-season-1-2026-11-26.json
 ```
 
 The JSON is read on each request. Reload the page after updating the snapshot

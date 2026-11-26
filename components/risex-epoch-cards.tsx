@@ -4,6 +4,7 @@ import styles from "@/components/epoch-activity-card.module.css";
 import { parsePoints } from "@/lib/estimator";
 import type { RisexEpoch } from "@/lib/risex-epochs";
 import type { RisexReport } from "@/lib/risex-wallet";
+import { latestRisexDistribution } from "@/lib/risex-distributions";
 
 const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 const statuses: Record<RisexEpoch["status"], string> = {
@@ -37,7 +38,8 @@ export default function RisexEpochCards({ epochs, selected, points, onSelect, on
     <div className={`rx-epoch-grid ${styles.grid}`} id="rx-epoch-cards" role="group" aria-label="Select a points epoch">
       {epochs.filter(epoch => expanded || recent.has(epoch.id)).map(epoch => {
         const activityDates = epoch.from === null ? "Before 20 Jul · ~12 weeks" : shortDate.formatRange(epoch.from, epoch.to - 1);
-        return <EpochActivityCard key={epoch.id} label={epoch.label} status={risexEpochStatus(epoch.status)}
+        return <EpochActivityCard key={epoch.id} label={epoch.label}
+          status={epoch.id === latestRisexDistribution.epochId ? "Distributed" : risexEpochStatus(epoch.status)}
           dates={activityDates} distribution={shortDate.format(epoch.distribution)} selected={selected === epoch.id}
           points={points[epoch.id] ?? ""} placeholder={epoch.status === "completed" ? "Enter points" : "Pending"}
           volume={epoch.activity?.summary?.volume} maxPoints={maxPoints} maxVolume={maxVolume}

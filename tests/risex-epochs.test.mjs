@@ -7,6 +7,7 @@ registerHooks({ resolve(specifier, context, next) {
 } });
 const { risexEpochs, isRisexScheduleCurrent } = await import('../lib/risex-epochs.ts');
 const { riseFill, buildRisexReport } = await import('../lib/risex-wallet.ts');
+const { latestRisexDistribution } = await import('../lib/risex-distributions.ts');
 
 const start17 = Date.parse('2026-11-09T00:00:00Z');
 const end17 = Date.parse('2026-11-16T00:00:00Z');
@@ -82,4 +83,35 @@ test('RISEx awarded totals include Week 17 and exclude Week 18 at the exact boun
   assert.equal(report.awarded.summary.volume, '100');
   assert.equal(report.season1.summary.volume, '100');
   assert.equal(report.total.summary.volume, '300');
+});
+
+test('Week 18 remains awarded after the API advances to Week 19', () => {
+  const now = Date.parse('2026-11-26T10:00:00Z');
+  const start = Date.parse('2026-11-16T00:00:00Z');
+  const end = Date.parse('2026-11-23T00:00:00Z');
+  const live = { label: 'Week 19', from: end, to: Date.parse('2026-11-29T23:59:00Z'), distribution: Date.parse('2026-12-01T14:00:00Z') };
+  const fill = (id, time, price) => riseFill({
+    id, order_id: id, market_id: '1', blockchain_data: { block_number: id, log_index: '1' },
+    size: '1', price, side: 'BUY', fee: '0.1', liquidity_indicator: 'TAKER',
+    time: String(BigInt(time) * 1_000_000n), avg_price: '0', realized_pnl: '0',
+  });
+  for (const epoch of [null, live]) {
+    const report = buildRisexReport({
+      address: '0x1111111111111111111111111111111111111111', now,
+      trades: { rows: [fill('1', end - 1, '100'), fill('2', end, '200')], status: 'complete', pages: 1, warnings: [] },
+      funding: { rows: [], status: 'complete', pages: 1, warnings: [] },
+      portfolio: null, transfers: null, epoch, warnings: [],
+    });
+    const week18 = report.epochs.find(item => item.id === latestRisexDistribution.epochId);
+    assert.equal(week18.from, start);
+    assert.equal(week18.to, end);
+    assert.equal(week18.status, 'completed');
+    assert.equal(week18.activity.summary.volume, '100');
+    assert.equal(report.epochs.find(item => item.from === end).status, 'in-progress');
+    assert.equal(report.awarded.summary.volume, '100');
+    assert.equal(report.season1.summary.volume, '100');
+    assert.equal(report.total.summary.volume, '300');
+    assert.equal(isRisexScheduleCurrent(report.epochs, now), true);
+    assert.equal(isRisexScheduleCurrent(report.epochs.filter(item => item.id !== week18.id), now), false);
+  }
 });

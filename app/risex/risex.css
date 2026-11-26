@@ -117,6 +117,10 @@
 .rx-method > div:last-child > p:last-child { margin-bottom: 0; }
 .rx-method > div:last-child > .rx-formula { color: var(--rx-text); font-family: var(--rx-mono); overflow-wrap: anywhere; }
 .rx-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 1px 0 23px; color: var(--rx-muted); font: 500 10px/1.5 var(--rx-mono); }
+.rx-distribution { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; margin: 18px 0; padding: 16px 18px; border: 1px solid var(--rx-border); border-radius: 4px; background: var(--rx-surface); font-size: 12px; }
+.rx-distribution strong { color: var(--rx-green); font-size: 14px; }
+.rx-distribution p { margin: 6px 0 0; color: var(--rx-muted); line-height: 1.5; }
+.rx-distribution a { color: var(--rx-green); text-underline-offset: 3px; }
 @media (max-width: 790px) {
   .rx-workspace { grid-template-columns: minmax(0,1fr); }
   .rx-intro { flex-wrap: wrap; }
